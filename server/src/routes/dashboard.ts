@@ -11,7 +11,7 @@ router.get("/", authMiddleware, async (req: any, res) => {
     include: {
       entries: {
         orderBy: { date: "desc" },
-        take: 10,
+        take: 7,
       },
     },
   });
@@ -31,6 +31,11 @@ router.get("/", authMiddleware, async (req: any, res) => {
 
   res.json({
     studentName: user.name,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+    },
     progress: {
       juz: 0,
       pages: 0,
