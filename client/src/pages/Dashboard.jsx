@@ -3,6 +3,7 @@ import { createDailyEntry, getDashboardData } from "../api/api";
 import { surahs } from "../data/surahs";
 import {
   coverageTypes,
+  createCoverageFromEntry,
   createDefaultCoverage,
   formatCoverageRange,
   formatRecentCoverage,
@@ -19,8 +20,10 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       const dashboardData = await getDashboardData();
+      const latestVisibleEntry = dashboardData.recentEntries?.find(isVisibleRecentEntry);
 
       setData(dashboardData);
+      setCoverage(createCoverageFromEntry(latestVisibleEntry));
     };
 
     fetchData();
@@ -110,15 +113,17 @@ export default function Dashboard() {
         sabaqPara,
         manzil: revision,
         notes: "",
+        coverage,
       });
 
       setData((currentData) => ({
         ...currentData,
         streak: savedEntry.streak,
         longestStreak: savedEntry.longestStreak,
+        progress: savedEntry.progress,
         recentEntries: [savedEntry.entry, ...currentData.recentEntries].slice(0, 7),
       }));
-      setCoverage(createDefaultCoverage());
+      setCoverage(createCoverageFromEntry(savedEntry.entry));
     } finally {
       setIsSaving(false);
     }
@@ -167,6 +172,26 @@ export default function Dashboard() {
                 <div style={styles.progressItem}>
                   <span style={styles.progressLabel}>Current Point</span>
                   <strong style={styles.progressTextValue}>{currentProgressText}</strong>
+                </div>
+
+                <div style={styles.currentJuzItem}>
+                  <div style={styles.currentJuzHeader}>
+                    <span style={styles.progressLabel}>Current Juz</span>
+                    <strong style={styles.progressTextValue}>
+                      {progress.currentJuz ? `Juz ${progress.currentJuz}` : "Not set"}
+                    </strong>
+                  </div>
+                  <div style={styles.progressBarTrack}>
+                    <div
+                      style={{
+                        ...styles.progressBarFill,
+                        width: `${progress.currentJuzProgressPercent || 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p style={styles.progressPercentText}>
+                    {progress.currentJuzProgressPercent || 0}% complete
+                  </p>
                 </div>
               </div>
             </section>
@@ -470,6 +495,35 @@ const styles = {
     textAlign: "right",
     fontSize: 13,
     lineHeight: 1.2,
+  },
+  currentJuzItem: {
+    padding: "13px 0",
+    borderBottom: "1px solid #edf2ee",
+  },
+  currentJuzHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 10,
+  },
+  progressBarTrack: {
+    height: 8,
+    background: "#edf3ef",
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    background: "#1f7a55",
+    borderRadius: 999,
+  },
+  progressPercentText: {
+    color: "#64766d",
+    fontSize: 12,
+    fontWeight: 700,
+    marginTop: 7,
+    textAlign: "right",
   },
   coverageList: {
     display: "grid",

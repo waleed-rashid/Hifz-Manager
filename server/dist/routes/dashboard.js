@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
+const quranProgress_1 = require("../quranProgress");
 const router = express_1.default.Router();
 // GET DASHBOARD DATA
 router.get("/", auth_1.authMiddleware, async (req, res) => {
@@ -37,6 +38,38 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
         orderBy: { date: "desc" },
         take: 7,
     });
+    const allEntries = await prisma_1.prisma.dailyEntry.findMany({
+        where: { userId: req.userId },
+        orderBy: { date: "desc" },
+        select: {
+            sabaq: true,
+            sabaqPara: true,
+            manzil: true,
+        },
+    });
+    const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(allEntries, (0, quranProgress_1.parseMemorizedJuzList)(user.memorizedJuzList));
+    const latestSabaqRange = (0, quranProgress_1.getLatestSabaqRange)(allEntries);
+    const currentJuz = latestSabaqRange && (0, quranProgress_1.getJuzForAyahReference)(latestSabaqRange.endSurahNumber, latestSabaqRange.endAyah);
+    const effectiveCurrentJuz = currentJuz ?? user.currentJuz;
+    const currentSurah = latestSabaqRange?.endSurahNumber ?? user.currentSurah;
+    const currentAyah = latestSabaqRange?.endAyah ?? user.currentAyah;
+    const currentJuzProgressPercent = (0, quranProgress_1.getJuzProgressPercent)(currentSurah, currentAyah);
+    if (memorizedJuz.length !== user.memorizedJuzCount ||
+        JSON.stringify(memorizedJuz) !== user.memorizedJuzList ||
+        effectiveCurrentJuz !== user.currentJuz ||
+        currentSurah !== user.currentSurah ||
+        currentAyah !== user.currentAyah) {
+        await prisma_1.prisma.user.update({
+            where: { id: user.id },
+            data: {
+                memorizedJuzCount: memorizedJuz.length,
+                memorizedJuzList: JSON.stringify(memorizedJuz),
+                currentJuz: effectiveCurrentJuz,
+                currentSurah,
+                currentAyah,
+            },
+        });
+    }
     const todayEntry = recentEntries.find((entry) => {
         const entryDate = new Date(entry.date);
         entryDate.setHours(0, 0, 0, 0);
@@ -50,11 +83,12 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
             email: user.email,
         },
         progress: {
-            juz: user.memorizedJuzCount,
-            memorizedJuz: JSON.parse(user.memorizedJuzList),
-            currentJuz: user.currentJuz,
-            currentSurah: user.currentSurah,
-            currentAyah: user.currentAyah,
+            juz: memorizedJuz.length,
+            memorizedJuz,
+            currentJuz: effectiveCurrentJuz,
+            currentSurah,
+            currentAyah,
+            currentJuzProgressPercent,
             pages: 0,
             surahs: 0,
         },

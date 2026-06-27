@@ -1,6 +1,14 @@
 import express from "express";
 import { prisma } from "../prisma";
 import { AuthRequest, authMiddleware } from "../middleware/auth";
+import {
+  calculateCompletedJuz,
+  getJuzForAyahReference,
+  getJuzProgressPercent,
+  normalizeCoverageRange,
+  parseCoverageRange,
+  parseMemorizedJuzList,
+} from "../quranProgress";
 
 const router = express.Router();
 
@@ -10,7 +18,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     return res.status(401).json({ message: "Not authenticated" });
   }
 
-  const { sabaq, sabaqPara, manzil, notes } = req.body;
+  const { sabaq, sabaqPara, manzil, notes, coverage } = req.body;
 
   const user = await prisma.user.findUnique({
     where: { id: req.userId },
@@ -63,10 +71,52 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     },
   });
 
+  const entries = await prisma.dailyEntry.findMany({
+    where: { userId: req.userId },
+    select: {
+      sabaq: true,
+      sabaqPara: true,
+      manzil: true,
+    },
+  });
+  const sabaqRange = normalizeCoverageRange(coverage?.sabaq) || parseCoverageRange(sabaq);
+  const currentJuz =
+    sabaqRange && getJuzForAyahReference(sabaqRange.endSurahNumber, sabaqRange.endAyah);
+  const effectiveCurrentJuz = currentJuz ?? user.currentJuz;
+  const currentSurah = sabaqRange?.endSurahNumber ?? user.currentSurah;
+  const currentAyah = sabaqRange?.endAyah ?? user.currentAyah;
+  const currentJuzProgressPercent = getJuzProgressPercent(currentSurah, currentAyah);
+  const memorizedJuz = calculateCompletedJuz(
+    entries,
+    parseMemorizedJuzList(user.memorizedJuzList),
+    sabaqRange
+  );
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      memorizedJuzCount: memorizedJuz.length,
+      memorizedJuzList: JSON.stringify(memorizedJuz),
+      currentJuz: effectiveCurrentJuz,
+      currentSurah,
+      currentAyah,
+    },
+  });
+
   res.json({
     entry,
     streak: updatedUser.streak,
     longestStreak: updatedUser.longestStreak,
+    progress: {
+      juz: memorizedJuz.length,
+      memorizedJuz,
+      currentJuz: effectiveCurrentJuz,
+      currentSurah,
+      currentAyah,
+      currentJuzProgressPercent,
+      pages: 0,
+      surahs: 0,
+    },
   });
 });
 

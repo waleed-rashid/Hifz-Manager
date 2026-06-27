@@ -32,22 +32,108 @@ export const formatCoverageRange = (entry) => {
   return `${startSurah.name} ${entry.startAyah} - ${endSurah.name} ${entry.endAyah}`;
 };
 
-export const formatRecentCoverage = (coverageText) => {
-  const rangeMatch = coverageText?.match(
+const getSurahByName = (surahName) =>
+  surahs.find((surah) => surah.name.toLowerCase() === surahName?.toLowerCase());
+
+export const parseCoverageRange = (coverageText) => {
+  const legacyRangeMatch = coverageText?.match(
     /^\d+\.\s*([^:]+):(\d+)\s*-\s*\d+\.\s*([^:]+):(\d+)$/
   );
 
-  if (!rangeMatch) {
+  if (legacyRangeMatch) {
+    const [, startSurahName, startAyah, endSurahName, endAyah] = legacyRangeMatch;
+    const startSurah = getSurahByName(startSurahName);
+    const endSurah = getSurahByName(endSurahName);
+
+    if (startSurah && endSurah) {
+      return {
+        startSurahNumber: startSurah.number,
+        startAyah: Number(startAyah),
+        endSurahNumber: endSurah.number,
+        endAyah: Number(endAyah),
+      };
+    }
+  }
+
+  const normalizedRangeMatch = coverageText?.match(/^(.+)\s+(\d+)\s+-\s+(.+)\s+(\d+)$/);
+
+  if (normalizedRangeMatch) {
+    const [, startSurahName, startAyah, endSurahName, endAyah] = normalizedRangeMatch;
+    const startSurah = getSurahByName(startSurahName);
+    const endSurah = getSurahByName(endSurahName);
+
+    if (startSurah && endSurah) {
+      return {
+        startSurahNumber: startSurah.number,
+        startAyah: Number(startAyah),
+        endSurahNumber: endSurah.number,
+        endAyah: Number(endAyah),
+      };
+    }
+  }
+
+  const sameSurahRangeMatch = coverageText?.match(/^(.+)\s+(\d+)\s+-\s+(\d+)$/);
+
+  if (sameSurahRangeMatch) {
+    const [, surahName, startAyah, endAyah] = sameSurahRangeMatch;
+    const surah = getSurahByName(surahName);
+
+    if (surah) {
+      return {
+        startSurahNumber: surah.number,
+        startAyah: Number(startAyah),
+        endSurahNumber: surah.number,
+        endAyah: Number(endAyah),
+      };
+    }
+  }
+
+  return null;
+};
+
+export const formatRecentCoverage = (coverageText) => {
+  const parsedCoverage = parseCoverageRange(coverageText);
+
+  if (!parsedCoverage) {
     return coverageText;
   }
 
-  const [, startSurahName, startAyah, endSurahName, endAyah] = rangeMatch;
+  const startSurah = getSurahByNumber(parsedCoverage.startSurahNumber);
+  const endSurah = getSurahByNumber(parsedCoverage.endSurahNumber);
+  const startsAtFirstAyah = parsedCoverage.startAyah === 1;
+  const endsAtLastAyah = parsedCoverage.endAyah === endSurah.ayahs;
 
-  if (startSurahName === endSurahName) {
-    return `${startSurahName} ${startAyah} - ${endAyah}`;
+  if (startSurah.number === endSurah.number) {
+    if (startsAtFirstAyah && endsAtLastAyah) {
+      return startSurah.name;
+    }
+
+    return `${startSurah.name} ${parsedCoverage.startAyah} - ${parsedCoverage.endAyah}`;
   }
 
-  return `${startSurahName} ${startAyah} - ${endSurahName} ${endAyah}`;
+  const startReference = startsAtFirstAyah
+    ? startSurah.name
+    : `${startSurah.name} ${parsedCoverage.startAyah}`;
+  const endReference = endsAtLastAyah
+    ? endSurah.name
+    : `${endSurah.name} ${parsedCoverage.endAyah}`;
+
+  return `${startReference} - ${endReference}`;
+};
+
+export const createCoverageFromEntry = (entry) => {
+  if (!entry) {
+    return createDefaultCoverage();
+  }
+
+  return {
+    ...createDefaultCoverage(),
+    ...(parseCoverageRange(entry.sabaq) ? { sabaq: parseCoverageRange(entry.sabaq) } : {}),
+    ...(parseCoverageRange(entry.sabaqPara)
+      ? { sabaqPara: parseCoverageRange(entry.sabaqPara) }
+      : {}),
+    ...(parseCoverageRange(entry.manzil) ? { revision: parseCoverageRange(entry.manzil) } : {}),
+  };
 };
 
 export const isVisibleRecentEntry = (entry) =>

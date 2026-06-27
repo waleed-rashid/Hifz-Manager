@@ -1,6 +1,13 @@
 import express from "express";
 import { prisma } from "../prisma";
 import { AuthRequest, authMiddleware } from "../middleware/auth";
+import {
+  calculateCompletedJuz,
+  getJuzForAyahReference,
+  getJuzProgressPercent,
+  getLatestSabaqRange,
+  parseMemorizedJuzList,
+} from "../quranProgress";
 
 const router = express.Router();
 
@@ -38,6 +45,45 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     orderBy: { date: "desc" },
     take: 7,
   });
+  const allEntries = await prisma.dailyEntry.findMany({
+    where: { userId: req.userId },
+    orderBy: { date: "desc" },
+    select: {
+      sabaq: true,
+      sabaqPara: true,
+      manzil: true,
+    },
+  });
+  const memorizedJuz = calculateCompletedJuz(
+    allEntries,
+    parseMemorizedJuzList(user.memorizedJuzList)
+  );
+  const latestSabaqRange = getLatestSabaqRange(allEntries);
+  const currentJuz =
+    latestSabaqRange && getJuzForAyahReference(latestSabaqRange.endSurahNumber, latestSabaqRange.endAyah);
+  const effectiveCurrentJuz = currentJuz ?? user.currentJuz;
+  const currentSurah = latestSabaqRange?.endSurahNumber ?? user.currentSurah;
+  const currentAyah = latestSabaqRange?.endAyah ?? user.currentAyah;
+  const currentJuzProgressPercent = getJuzProgressPercent(currentSurah, currentAyah);
+
+  if (
+    memorizedJuz.length !== user.memorizedJuzCount ||
+    JSON.stringify(memorizedJuz) !== user.memorizedJuzList ||
+    effectiveCurrentJuz !== user.currentJuz ||
+    currentSurah !== user.currentSurah ||
+    currentAyah !== user.currentAyah
+  ) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        memorizedJuzCount: memorizedJuz.length,
+        memorizedJuzList: JSON.stringify(memorizedJuz),
+        currentJuz: effectiveCurrentJuz,
+        currentSurah,
+        currentAyah,
+      },
+    });
+  }
 
   const todayEntry = recentEntries.find((entry) => {
     const entryDate = new Date(entry.date);
@@ -53,11 +99,12 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
       email: user.email,
     },
     progress: {
-      juz: user.memorizedJuzCount,
-      memorizedJuz: JSON.parse(user.memorizedJuzList),
-      currentJuz: user.currentJuz,
-      currentSurah: user.currentSurah,
-      currentAyah: user.currentAyah,
+      juz: memorizedJuz.length,
+      memorizedJuz,
+      currentJuz: effectiveCurrentJuz,
+      currentSurah,
+      currentAyah,
+      currentJuzProgressPercent,
       pages: 0,
       surahs: 0,
     },
