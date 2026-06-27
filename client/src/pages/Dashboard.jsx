@@ -16,14 +16,19 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [coverage, setCoverage] = useState(createDefaultCoverage);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
-      const dashboardData = await getDashboardData();
-      const latestVisibleEntry = dashboardData.recentEntries?.find(isVisibleRecentEntry);
+      try {
+        const dashboardData = await getDashboardData();
+        const latestVisibleEntry = dashboardData.recentEntries?.find(isVisibleRecentEntry);
 
-      setData(dashboardData);
-      setCoverage(createCoverageFromEntry(latestVisibleEntry));
+        setData(dashboardData);
+        setCoverage(createCoverageFromEntry(latestVisibleEntry));
+      } catch (error) {
+        setLoadError(error.response?.data?.message || "Dashboard failed to load.");
+      }
     };
 
     fetchData();
@@ -121,7 +126,10 @@ export default function Dashboard() {
         streak: savedEntry.streak,
         longestStreak: savedEntry.longestStreak,
         progress: savedEntry.progress,
-        recentEntries: [savedEntry.entry, ...currentData.recentEntries].slice(0, 7),
+        recentEntries: [
+          savedEntry.entry,
+          ...(Array.isArray(currentData.recentEntries) ? currentData.recentEntries : []),
+        ].slice(0, 7),
       }));
       setCoverage(createCoverageFromEntry(savedEntry.entry));
     } finally {
@@ -129,11 +137,13 @@ export default function Dashboard() {
     }
   };
 
+  if (loadError) return <p style={styles.loading}>{loadError}</p>;
   if (!data) return <p style={styles.loading}>Loading...</p>;
 
   const studentName = data.studentName || data.user?.name || "Student";
   const progress = data.progress || {};
-  const recentEntries = data.recentEntries.filter(isVisibleRecentEntry).slice(0, 7);
+  const savedEntries = Array.isArray(data.recentEntries) ? data.recentEntries : [];
+  const recentEntries = savedEntries.filter(isVisibleRecentEntry).slice(0, 7);
   const currentSurah = progress.currentSurah
     ? surahs.find((surah) => surah.number === Number(progress.currentSurah))
     : null;
@@ -155,7 +165,7 @@ export default function Dashboard() {
       <main style={styles.content}>
         <div style={styles.dashboardGrid}>
           <div style={styles.leftColumn}>
-            <section style={styles.panel}>
+            <section style={{ ...styles.panel, ...styles.panelIntroOne }}>
               <h2 style={styles.panelTitle}>Progress Overview 📝</h2>
 
               <div style={styles.progressList}>
@@ -196,7 +206,7 @@ export default function Dashboard() {
               </div>
             </section>
 
-            <section style={{ ...styles.panel, ...styles.streakPanel }}>
+            <section style={{ ...styles.panel, ...styles.streakPanel, ...styles.panelIntroTwo }}>
               <h2 style={styles.smallPanelTitle}>Streaks 🔥</h2>
 
               <div style={styles.streakGrid}>
@@ -213,7 +223,7 @@ export default function Dashboard() {
             </section>
           </div>
 
-          <section style={styles.panel}>
+          <section style={{ ...styles.panel, ...styles.panelIntroThree }}>
             <h2 style={styles.panelTitle}>What did you cover today? 🧠</h2>
 
             <div style={styles.coverageList}>
@@ -322,7 +332,7 @@ export default function Dashboard() {
             </button>
           </section>
 
-          <section style={styles.panel}>
+          <section style={{ ...styles.panel, ...styles.panelIntroFour }}>
             <h2 style={styles.panelTitle}>Recent Entries</h2>
 
             {recentEntries.length === 0 ? (
@@ -370,6 +380,8 @@ const styles = {
     maxWidth: 1120,
     margin: "0 auto 24px",
     textAlign: "center",
+    opacity: 0,
+    animation: "dashboard-dissolve-in 700ms ease-out 80ms forwards",
   },
   kicker: {
     color: "#4d7c65",
@@ -415,6 +427,20 @@ const styles = {
     borderRadius: 8,
     padding: 22,
     boxShadow: "0 18px 45px rgba(32, 63, 48, 0.08)",
+    opacity: 0,
+    animation: "dashboard-dissolve-in 760ms ease-out forwards",
+  },
+  panelIntroOne: {
+    animationDelay: "180ms",
+  },
+  panelIntroTwo: {
+    animationDelay: "300ms",
+  },
+  panelIntroThree: {
+    animationDelay: "240ms",
+  },
+  panelIntroFour: {
+    animationDelay: "360ms",
   },
   panelTitle: {
     color: "#18231f",
