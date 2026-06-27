@@ -170,7 +170,7 @@ export default function Dashboard() {
 
               <div style={styles.progressList}>
                 <div style={styles.progressItem}>
-                  <span style={styles.progressLabel}>Ajza Memorized</span>
+                  <span style={styles.progressLabel}>Ajzaa Memorized</span>
                   <strong style={styles.progressValue}>{progress.juz || 0}</strong>
                 </div>
 
@@ -180,7 +180,7 @@ export default function Dashboard() {
                 </div>
 
                 <div style={styles.progressItem}>
-                  <span style={styles.progressLabel}>Current Point</span>
+                  <span style={styles.progressLabel}>Current Ayah</span>
                   <strong style={styles.progressTextValue}>{currentProgressText}</strong>
                 </div>
 
