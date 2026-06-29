@@ -1,5 +1,10 @@
-import { useEffect, useState } from "react";
-import { createDailyEntry, getDashboardData } from "../api/api";
+import { useEffect, useRef, useState } from "react";
+import {
+  createDailyEntry,
+  deleteDailyEntry,
+  getDashboardData,
+  restoreDailyEntry,
+} from "../api/api";
 import { surahs } from "../data/surahs";
 import {
   coverageTypes,
@@ -22,27 +27,60 @@ export default function Dashboard() {
   const [coverage, setCoverage] = useState(createDefaultCoverage);
   const [activeCoverageKeys, setActiveCoverageKeys] = useState([]);
   const [notes, setNotes] = useState("");
+  const [pendingUndo, setPendingUndo] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const undoTimeoutRef = useRef(null);
+
+  const applyDashboardData = (dashboardData) => {
+    const sabaqCoverageMap = buildSabaqCoverageMap(dashboardData.sabaqEntries);
+    const nextCoverage = createNextCoverageFromLatest(dashboardData.latestCoverage);
+
+    setData(dashboardData);
+    setCoverage({
+      ...nextCoverage,
+      sabaq: createNextSabaqCoverage(sabaqCoverageMap, nextCoverage.sabaq) || nextCoverage.sabaq,
+    });
+  };
+
+  const showUndoPrompt = (undoOperation) => {
+    if (undoTimeoutRef.current) {
+      window.clearTimeout(undoTimeoutRef.current);
+    }
+
+    setPendingUndo(undoOperation);
+    undoTimeoutRef.current = window.setTimeout(() => {
+      setPendingUndo(null);
+      undoTimeoutRef.current = null;
+    }, 7000);
+  };
+
+  const dismissUndoPrompt = () => {
+    if (undoTimeoutRef.current) {
+      window.clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = null;
+    }
+
+    setPendingUndo(null);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const dashboardData = await getDashboardData();
-        const sabaqCoverageMap = buildSabaqCoverageMap(dashboardData.sabaqEntries);
-        const nextCoverage = createNextCoverageFromLatest(dashboardData.latestCoverage);
-
-        setData(dashboardData);
-        setCoverage({
-          ...nextCoverage,
-          sabaq: createNextSabaqCoverage(sabaqCoverageMap, nextCoverage.sabaq) || nextCoverage.sabaq,
-        });
+        applyDashboardData(dashboardData);
       } catch (error) {
         setLoadError(error.response?.data?.message || "Dashboard failed to load.");
       }
     };
 
     fetchData();
+
+    return () => {
+      if (undoTimeoutRef.current) {
+        window.clearTimeout(undoTimeoutRef.current);
+      }
+    };
   }, []);
 
   const updateCoverage = (typeKey, field, value) => {
@@ -222,10 +260,38 @@ export default function Dashboard() {
       });
       setActiveCoverageKeys([]);
       setNotes("");
+      showUndoPrompt(savedEntry.undoOperation);
     } catch (error) {
       alert(error.response?.data?.message || "Entry failed to save. Please try again.");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const undoSavedEntry = async () => {
+    if (!pendingUndo) {
+      return;
+    }
+
+    if (undoTimeoutRef.current) {
+      window.clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = null;
+    }
+
+    const undoOperation = pendingUndo;
+    setPendingUndo(null);
+
+    try {
+      if (undoOperation.type === "restore") {
+        await restoreDailyEntry(undoOperation.entry);
+      } else {
+        await deleteDailyEntry(undoOperation.entryId);
+      }
+
+      const dashboardData = await getDashboardData();
+      applyDashboardData(dashboardData);
+    } catch (error) {
+      alert(error.response?.data?.message || "Undo failed. Please try again.");
     }
   };
 
@@ -545,6 +611,23 @@ export default function Dashboard() {
           </section>
         </div>
       </main>
+
+      {pendingUndo ? (
+        <div style={styles.undoToast}>
+          <span style={styles.undoText}>Entry saved</span>
+          <button type="button" onClick={undoSavedEntry} style={styles.undoButton}>
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={dismissUndoPrompt}
+            aria-label="Dismiss undo"
+            style={styles.undoCloseButton}
+          >
+            ✖
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -861,6 +944,52 @@ const styles = {
     marginTop: 9,
     paddingTop: 9,
     borderTop: "1px solid #edf2ee",
+  },
+  undoToast: {
+    position: "fixed",
+    left: "50%",
+    bottom: 26,
+    zIndex: 20,
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 46,
+    color: "#17201b",
+    background: "rgba(251, 253, 251, 0.96)",
+    border: "1px solid #d8e3dc",
+    borderRadius: 8,
+    padding: "9px 10px 9px 16px",
+    boxShadow: "0 18px 36px rgba(23, 32, 27, 0.14)",
+    transform: "translateX(-50%)",
+    animation: "undo-dissolve-life 7000ms ease-in-out forwards",
+  },
+  undoText: {
+    color: "#40534b",
+    fontSize: 14,
+    fontWeight: 750,
+    whiteSpace: "nowrap",
+  },
+  undoButton: {
+    minHeight: 32,
+    color: "white",
+    background: "#1f7a55",
+    border: "1px solid #1b6f4d",
+    borderRadius: 7,
+    padding: "6px 13px",
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  undoCloseButton: {
+    width: 32,
+    minWidth: 32,
+    minHeight: 32,
+    color: "#5f7068",
+    background: "transparent",
+    border: 0,
+    borderRadius: 0,
+    fontSize: 13,
+    fontWeight: 900,
+    cursor: "pointer",
   },
   emptyText: {
     color: "#64766d",

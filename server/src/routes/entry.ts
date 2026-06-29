@@ -74,6 +74,15 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
           notes,
         },
       });
+  const undoOperation = canMergeWithExistingEntry
+    ? {
+        type: "restore",
+        entry: existingEntry,
+      }
+    : {
+        type: "delete",
+        entryId: entry.id,
+      };
 
   const recentEntries = await prisma.dailyEntry.findMany({
     where: { userId: req.userId },
@@ -144,6 +153,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
 
   res.json({
     entry,
+    undoOperation,
     streak: streakStats.currentStreak,
     longestStreak: streakStats.longestStreak,
     longestStreakRange: streakStats.longestStreakRange,
@@ -163,6 +173,77 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     },
     recentEntries,
   });
+});
+
+// DELETE ENTRY
+router.patch("/:id/restore", authMiddleware, async (req: AuthRequest, res) => {
+  if (!req.userId) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  const entryId = Number(req.params.id);
+
+  if (!Number.isInteger(entryId)) {
+    return res.status(400).json({ message: "Invalid entry id" });
+  }
+
+  const {
+    sabaq,
+    sabaqPara,
+    manzil,
+    sabaqSaved,
+    sabaqParaSaved,
+    manzilSaved,
+    notes,
+  } = req.body;
+
+  const restoredEntry = await prisma.dailyEntry.updateMany({
+    where: {
+      id: entryId,
+      userId: req.userId,
+    },
+    data: {
+      sabaq: sabaq || "",
+      sabaqPara: sabaqPara || "",
+      manzil: manzil || "",
+      sabaqSaved: Boolean(sabaqSaved),
+      sabaqParaSaved: Boolean(sabaqParaSaved),
+      manzilSaved: Boolean(manzilSaved),
+      notes,
+    },
+  });
+
+  if (restoredEntry.count === 0) {
+    return res.status(404).json({ message: "Entry not found" });
+  }
+
+  res.json({ message: "Entry restored" });
+});
+
+// DELETE ENTRY
+router.delete("/:id", authMiddleware, async (req: AuthRequest, res) => {
+  if (!req.userId) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  const entryId = Number(req.params.id);
+
+  if (!Number.isInteger(entryId)) {
+    return res.status(400).json({ message: "Invalid entry id" });
+  }
+
+  const deletedEntry = await prisma.dailyEntry.deleteMany({
+    where: {
+      id: entryId,
+      userId: req.userId,
+    },
+  });
+
+  if (deletedEntry.count === 0) {
+    return res.status(404).json({ message: "Entry not found" });
+  }
+
+  res.json({ message: "Entry deleted" });
 });
 
 // GET MY ENTRIES

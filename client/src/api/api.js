@@ -36,3 +36,13 @@ export const createDailyEntry = async (entry) => {
   const res = await api.post("/entries", entry);
   return res.data;
 };
+
+export const deleteDailyEntry = async (entryId) => {
+  const res = await api.delete(`/entries/${entryId}`);
+  return res.data;
+};
+
+export const restoreDailyEntry = async (entry) => {
+  const res = await api.patch(`/entries/${entry.id}/restore`, entry);
+  return res.data;
+};

@@ -18,7 +18,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -91,5 +92,26 @@ h3 {
     opacity: 1;
     transform: translateY(0);
     filter: blur(0);
+  }
+}
+
+@keyframes undo-dissolve-life {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    filter: blur(5px);
+  }
+
+  8%,
+  82% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    filter: blur(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    filter: blur(5px);
   }
 }
