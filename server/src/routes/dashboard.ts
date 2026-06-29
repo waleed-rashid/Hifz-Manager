@@ -9,6 +9,7 @@ import {
   parseMemorizedJuzList,
 } from "../quranProgress";
 import { calculateStreakStats } from "../streaks";
+import { calculateWeeklyActivity } from "../weeklyActivity";
 
 const router = express.Router();
 
@@ -61,6 +62,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     },
   });
   const streakStats = calculateStreakStats(allEntries, today);
+  const weeklyActivity = calculateWeeklyActivity(allEntries, today);
   const memorizedJuz = calculateCompletedJuz(
     allEntries,
     parseMemorizedJuzList(user.memorizedJuzList)
@@ -136,6 +138,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     streak: streakStats.currentStreak,
     longestStreak: streakStats.longestStreak,
     longestStreakRange: streakStats.longestStreakRange,
+    weeklyActivity,
     sabaqEntries: allEntries
       .filter((entry) => entry.sabaqSaved && entry.sabaq.trim())
       .map((entry) => ({ sabaq: entry.sabaq })),

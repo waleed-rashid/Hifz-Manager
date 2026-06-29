@@ -10,6 +10,7 @@ import {
   parseMemorizedJuzList,
 } from "../quranProgress";
 import { calculateStreakStats } from "../streaks";
+import { calculateWeeklyActivity } from "../weeklyActivity";
 
 const router = express.Router();
 
@@ -104,6 +105,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     },
   });
   const streakStats = calculateStreakStats(entries, today);
+  const weeklyActivity = calculateWeeklyActivity(entries, today);
   const sabaqRange =
     normalizeCoverageRange(coverage?.sabaq) ||
     (sabaq !== undefined ? parseCoverageRange(entry.sabaq) : null);
@@ -157,6 +159,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     streak: streakStats.currentStreak,
     longestStreak: streakStats.longestStreak,
     longestStreakRange: streakStats.longestStreakRange,
+    weeklyActivity,
     sabaqEntries: entries
       .filter((entry) => entry.sabaqSaved && entry.sabaq.trim())
       .map((entry) => ({ sabaq: entry.sabaq })),

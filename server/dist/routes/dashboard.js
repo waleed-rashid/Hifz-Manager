@@ -8,6 +8,7 @@ const prisma_1 = require("../prisma");
 const auth_1 = require("../middleware/auth");
 const quranProgress_1 = require("../quranProgress");
 const streaks_1 = require("../streaks");
+const weeklyActivity_1 = require("../weeklyActivity");
 const router = express_1.default.Router();
 // GET DASHBOARD DATA
 router.get("/", auth_1.authMiddleware, async (req, res) => {
@@ -54,6 +55,7 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
         },
     });
     const streakStats = (0, streaks_1.calculateStreakStats)(allEntries, today);
+    const weeklyActivity = (0, weeklyActivity_1.calculateWeeklyActivity)(allEntries, today);
     const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(allEntries, (0, quranProgress_1.parseMemorizedJuzList)(user.memorizedJuzList));
     const latestSabaqRange = (0, quranProgress_1.getLatestSabaqRange)(allEntries);
     const currentJuz = latestSabaqRange && (0, quranProgress_1.getJuzForAyahReference)(latestSabaqRange.endSurahNumber, latestSabaqRange.endAyah);
@@ -116,6 +118,7 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
         streak: streakStats.currentStreak,
         longestStreak: streakStats.longestStreak,
         longestStreakRange: streakStats.longestStreakRange,
+        weeklyActivity,
         sabaqEntries: allEntries
             .filter((entry) => entry.sabaqSaved && entry.sabaq.trim())
             .map((entry) => ({ sabaq: entry.sabaq })),

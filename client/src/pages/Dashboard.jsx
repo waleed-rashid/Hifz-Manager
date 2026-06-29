@@ -241,6 +241,7 @@ export default function Dashboard() {
           streak: savedEntry.streak,
           longestStreak: savedEntry.longestStreak,
           longestStreakRange: savedEntry.longestStreakRange,
+          weeklyActivity: savedEntry.weeklyActivity,
           progress: savedEntry.progress,
           sabaqEntries: savedEntry.sabaqEntries || currentData.sabaqEntries,
           latestCoverage: savedEntry.latestCoverage || currentData.latestCoverage,
@@ -317,6 +318,19 @@ export default function Dashboard() {
         data.longestStreakRange.endDate
       )}`
     : "No streak yet";
+  const weeklyActivity = Array.isArray(data.weeklyActivity) ? data.weeklyActivity : [];
+  const weeklyActivityColors = {
+    0: "#c94a3d",
+    1: "#e6c45b",
+    2: "#a7d8b8",
+    3: "#1f7a55",
+  };
+  const weeklyLegendItems = [
+    { count: 3, label: "3/3" },
+    { count: 2, label: "2/3" },
+    { count: 1, label: "1/3" },
+    { count: 0, label: "0/3" },
+  ];
 
   return (
     <div style={styles.page}>
@@ -386,6 +400,40 @@ export default function Dashboard() {
                   <strong style={styles.streakValue}>{data.longestStreak}</strong>
                   <span style={styles.streakDateRange}>{longestStreakRangeText}</span>
                 </div>
+              </div>
+            </section>
+
+            <section style={{ ...styles.panel, ...styles.weeklyPanel, ...styles.panelIntroTwo }}>
+              <h2 style={styles.smallPanelTitle}>Weekly Activity</h2>
+
+              <div style={styles.weeklyGrid}>
+                {weeklyActivity.map((day) => (
+                  <div key={day.date} style={styles.weeklyDay}>
+                    <span style={styles.weeklyDate}>{formatEntryDate(day.date).slice(0, 5)}</span>
+                    <span
+                      title={`${day.completedCount}/3 completed`}
+                      style={{
+                        ...styles.weeklyBox,
+                        background:
+                          weeklyActivityColors[day.completedCount] || weeklyActivityColors[0],
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div style={styles.weeklyLegend}>
+                {weeklyLegendItems.map((item) => (
+                  <span key={item.count} style={styles.legendItem}>
+                    <span
+                      style={{
+                        ...styles.legendSwatch,
+                        background: weeklyActivityColors[item.count],
+                      }}
+                    />
+                    {item.label}
+                  </span>
+                ))}
               </div>
             </section>
           </div>
@@ -765,6 +813,55 @@ const styles = {
     fontWeight: 700,
     lineHeight: 1.25,
     marginTop: 7,
+  },
+  weeklyPanel: {
+    padding: 16,
+  },
+  weeklyGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+    gap: 7,
+    alignItems: "end",
+  },
+  weeklyDay: {
+    display: "grid",
+    gap: 6,
+    justifyItems: "center",
+  },
+  weeklyDate: {
+    color: "#64766d",
+    fontSize: 10,
+    fontWeight: 800,
+    lineHeight: 1,
+  },
+  weeklyBox: {
+    width: "100%",
+    aspectRatio: "1 / 1",
+    maxWidth: 28,
+    border: "1px solid rgba(23, 32, 27, 0.1)",
+    borderRadius: 5,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+  },
+  weeklyLegend: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, auto)",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 13,
+  },
+  legendItem: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 4,
+    color: "#64766d",
+    fontSize: 10,
+    fontWeight: 800,
+  },
+  legendSwatch: {
+    width: 9,
+    height: 9,
+    borderRadius: 3,
+    border: "1px solid rgba(23, 32, 27, 0.08)",
   },
   progressList: {
     display: "grid",
