@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [coverage, setCoverage] = useState(createDefaultCoverage);
   const [activeCoverageKeys, setActiveCoverageKeys] = useState([]);
+  const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState("");
 
@@ -147,9 +148,13 @@ export default function Dashboard() {
       return selected;
     }, {});
     const entryPayload = {
-      notes: "",
       coverage: selectedCoverage,
     };
+    const trimmedNotes = notes.trim();
+
+    if (trimmedNotes) {
+      entryPayload.notes = trimmedNotes;
+    }
 
     if (activeCoverageKeys.includes("sabaq")) {
       const sabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries);
@@ -216,6 +221,7 @@ export default function Dashboard() {
         };
       });
       setActiveCoverageKeys([]);
+      setNotes("");
     } catch (error) {
       alert(error.response?.data?.message || "Entry failed to save. Please try again.");
     } finally {
@@ -480,6 +486,16 @@ export default function Dashboard() {
               })}
             </div>
 
+            <label style={{ ...styles.label, ...styles.notesLabel }}>
+              Notes
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Optional lesson notes..."
+                style={{ ...styles.input, ...styles.notesInput }}
+              />
+            </label>
+
             <button
               type="button"
               style={{
@@ -516,6 +532,11 @@ export default function Dashboard() {
                   {hasSavedCoverage(entry.manzil, entry.manzilSaved) ? (
                     <p style={styles.entryLine}>
                       <b>Revision:</b> {formatRecentCoverage(entry.manzil)}
+                    </p>
+                  ) : null}
+                  {entry.notes?.trim() ? (
+                    <p style={styles.entryNote}>
+                      <b>Notes:</b> {entry.notes}
                     </p>
                   ) : null}
                 </div>
@@ -795,6 +816,15 @@ const styles = {
     padding: "8px 10px",
     outlineColor: "#65a985",
   },
+  notesLabel: {
+    margin: "0 0 18px",
+  },
+  notesInput: {
+    minHeight: 86,
+    resize: "vertical",
+    lineHeight: 1.45,
+    fontFamily: "inherit",
+  },
   button: {
     width: "100%",
     minHeight: 42,
@@ -823,6 +853,14 @@ const styles = {
     fontSize: 13,
     lineHeight: 1.45,
     marginTop: 4,
+  },
+  entryNote: {
+    color: "#40534b",
+    fontSize: 13,
+    lineHeight: 1.5,
+    marginTop: 9,
+    paddingTop: 9,
+    borderTop: "1px solid #edf2ee",
   },
   emptyText: {
     color: "#64766d",
