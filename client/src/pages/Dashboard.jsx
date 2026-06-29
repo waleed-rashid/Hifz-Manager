@@ -3,12 +3,16 @@ import { createDailyEntry, getDashboardData } from "../api/api";
 import { surahs } from "../data/surahs";
 import {
   coverageTypes,
-  createCoverageFromEntry,
+  buildSabaqCoverageMap,
+  createNextCoverageFromLatest,
+  createNextSabaqCoverage,
   createDefaultCoverage,
   formatCoverageRange,
   formatRecentCoverage,
+  getAvailableAyahsForSabaq,
   getSurahByNumber,
   hasSavedCoverage,
+  isSabaqRangeAvailable,
   isVisibleRecentEntry,
 } from "../utils/coverage";
 import { formatEntryDate } from "../utils/dates";
@@ -24,10 +28,14 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         const dashboardData = await getDashboardData();
-        const latestVisibleEntry = dashboardData.recentEntries?.find(isVisibleRecentEntry);
+        const sabaqCoverageMap = buildSabaqCoverageMap(dashboardData.sabaqEntries);
+        const nextCoverage = createNextCoverageFromLatest(dashboardData.latestCoverage);
 
         setData(dashboardData);
-        setCoverage(createCoverageFromEntry(latestVisibleEntry));
+        setCoverage({
+          ...nextCoverage,
+          sabaq: createNextSabaqCoverage(sabaqCoverageMap, nextCoverage.sabaq) || nextCoverage.sabaq,
+        });
       } catch (error) {
         setLoadError(error.response?.data?.message || "Dashboard failed to load.");
       }
@@ -42,15 +50,23 @@ export default function Dashboard() {
 
       if (field === "startSurahNumber") {
         const selectedSurah = getSurahByNumber(value);
+        const availableAyahs =
+          typeKey === "sabaq"
+            ? getAvailableAyahsForSabaq(buildSabaqCoverageMap(data?.sabaqEntries), selectedSurah.number)
+            : [];
+        const firstAvailableAyah = availableAyahs[0] || 1;
         const nextEntry = {
           ...currentEntry,
           startSurahNumber: selectedSurah.number,
-          startAyah: 1,
+          startAyah: typeKey === "sabaq" ? firstAvailableAyah : 1,
         };
 
         if (selectedSurah.number > nextEntry.endSurahNumber) {
           nextEntry.endSurahNumber = selectedSurah.number;
-          nextEntry.endAyah = selectedSurah.ayahs;
+          nextEntry.endAyah =
+            typeKey === "sabaq"
+              ? availableAyahs[availableAyahs.length - 1] || selectedSurah.ayahs
+              : selectedSurah.ayahs;
         }
 
         return {
@@ -61,15 +77,20 @@ export default function Dashboard() {
 
       if (field === "endSurahNumber") {
         const selectedSurah = getSurahByNumber(value);
+        const availableAyahs =
+          typeKey === "sabaq"
+            ? getAvailableAyahsForSabaq(buildSabaqCoverageMap(data?.sabaqEntries), selectedSurah.number)
+            : [];
+        const lastAvailableAyah = availableAyahs[availableAyahs.length - 1] || selectedSurah.ayahs;
         const nextEntry = {
           ...currentEntry,
           endSurahNumber: selectedSurah.number,
-          endAyah: selectedSurah.ayahs,
+          endAyah: typeKey === "sabaq" ? lastAvailableAyah : selectedSurah.ayahs,
         };
 
         if (selectedSurah.number < nextEntry.startSurahNumber) {
           nextEntry.startSurahNumber = selectedSurah.number;
-          nextEntry.startAyah = 1;
+          nextEntry.startAyah = typeKey === "sabaq" ? availableAyahs[0] || 1 : 1;
         }
 
         return {
@@ -131,6 +152,13 @@ export default function Dashboard() {
     };
 
     if (activeCoverageKeys.includes("sabaq")) {
+      const sabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries);
+
+      if (!isSabaqRangeAvailable(sabaqCoverageMap, coverage.sabaq)) {
+        alert("That Sabaq range includes ayahs already saved. Choose only available ayahs.");
+        return;
+      }
+
       entryPayload.sabaq = formatCoverageRange(coverage.sabaq);
     }
 
@@ -171,10 +199,22 @@ export default function Dashboard() {
           longestStreak: savedEntry.longestStreak,
           longestStreakRange: savedEntry.longestStreakRange,
           progress: savedEntry.progress,
+          sabaqEntries: savedEntry.sabaqEntries || currentData.sabaqEntries,
+          latestCoverage: savedEntry.latestCoverage || currentData.latestCoverage,
           recentEntries: nextRecentEntries,
         };
       });
-      setCoverage(createCoverageFromEntry(savedEntry.entry));
+      setCoverage((currentCoverage) => {
+        const nextSabaqCoverageMap = buildSabaqCoverageMap(savedEntry.sabaqEntries);
+        const nextCoverage = createNextCoverageFromLatest(savedEntry.latestCoverage);
+
+        return {
+          ...nextCoverage,
+          sabaq:
+            createNextSabaqCoverage(nextSabaqCoverageMap, nextCoverage.sabaq) ||
+            currentCoverage.sabaq,
+        };
+      });
       setActiveCoverageKeys([]);
     } catch (error) {
       alert(error.response?.data?.message || "Entry failed to save. Please try again.");
@@ -190,6 +230,7 @@ export default function Dashboard() {
   const progress = data.progress || {};
   const savedEntries = Array.isArray(data.recentEntries) ? data.recentEntries : [];
   const recentEntries = savedEntries.filter(isVisibleRecentEntry).slice(0, 7);
+  const sabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries);
   const currentSurah = progress.currentSurah
     ? surahs.find((surah) => surah.number === Number(progress.currentSurah))
     : null;
@@ -315,10 +356,19 @@ export default function Dashboard() {
                   { length: endSurah.ayahs },
                   (_, index) => index + 1
                 );
+                const hasSabaqOptions =
+                  type.key !== "sabaq" ||
+                  surahs.some((surah) => (sabaqCoverageMap[surah.number]?.size || 0) < surah.ayahs);
 
                 return (
                   <div key={type.key} style={styles.coverageGroup}>
                     <h3 style={styles.coverageTitle}>{type.label}</h3>
+
+                    {!hasSabaqOptions ? (
+                      <p style={styles.emptyCoverageText}>
+                        All available Sabaq ayahs have already been saved.
+                      </p>
+                    ) : null}
 
                     <div style={styles.rangeGrid}>
                       <label style={styles.label}>
@@ -326,13 +376,21 @@ export default function Dashboard() {
                         <select
                           className="dashboard-select"
                           value={entry.startSurahNumber}
+                          disabled={!hasSabaqOptions}
                           onChange={(event) =>
                             updateCoverage(type.key, "startSurahNumber", event.target.value)
                           }
                           style={styles.input}
                         >
                           {surahs.map((surah) => (
-                            <option key={surah.number} value={surah.number}>
+                            <option
+                              key={surah.number}
+                              value={surah.number}
+                              disabled={
+                                type.key === "sabaq" &&
+                                (sabaqCoverageMap[surah.number]?.size || 0) >= surah.ayahs
+                              }
+                            >
                               {surah.number}. {surah.name}
                             </option>
                           ))}
@@ -344,13 +402,21 @@ export default function Dashboard() {
                         <select
                           className="dashboard-select"
                           value={entry.startAyah}
+                          disabled={!hasSabaqOptions}
                           onChange={(event) =>
                             updateCoverage(type.key, "startAyah", event.target.value)
                           }
                           style={styles.input}
                         >
                           {startAyahOptions.map((ayah) => (
-                            <option key={ayah} value={ayah}>
+                            <option
+                              key={ayah}
+                              value={ayah}
+                              disabled={
+                                type.key === "sabaq" &&
+                                sabaqCoverageMap[startSurah.number]?.has(ayah)
+                              }
+                            >
                               {ayah}
                             </option>
                           ))}
@@ -362,13 +428,21 @@ export default function Dashboard() {
                         <select
                           className="dashboard-select"
                           value={entry.endSurahNumber}
+                          disabled={!hasSabaqOptions}
                           onChange={(event) =>
                             updateCoverage(type.key, "endSurahNumber", event.target.value)
                           }
                           style={styles.input}
                         >
                           {surahs.map((surah) => (
-                            <option key={surah.number} value={surah.number}>
+                            <option
+                              key={surah.number}
+                              value={surah.number}
+                              disabled={
+                                type.key === "sabaq" &&
+                                (sabaqCoverageMap[surah.number]?.size || 0) >= surah.ayahs
+                              }
+                            >
                               {surah.number}. {surah.name}
                             </option>
                           ))}
@@ -380,13 +454,21 @@ export default function Dashboard() {
                         <select
                           className="dashboard-select"
                           value={entry.endAyah}
+                          disabled={!hasSabaqOptions}
                           onChange={(event) =>
                             updateCoverage(type.key, "endAyah", event.target.value)
                           }
                           style={styles.input}
                         >
                           {endAyahOptions.map((ayah) => (
-                            <option key={ayah} value={ayah}>
+                            <option
+                              key={ayah}
+                              value={ayah}
+                              disabled={
+                                type.key === "sabaq" &&
+                                sabaqCoverageMap[endSurah.number]?.has(ayah)
+                              }
+                            >
                               {ayah}
                             </option>
                           ))}

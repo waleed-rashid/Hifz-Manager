@@ -44,12 +44,12 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
 
   const recentEntries = await prisma.dailyEntry.findMany({
     where: { userId: req.userId },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
     take: 7,
   });
   const allEntries = await prisma.dailyEntry.findMany({
     where: { userId: req.userId },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
     select: {
       date: true,
       sabaq: true,
@@ -105,6 +105,16 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     entryDate.setHours(0, 0, 0, 0);
     return entryDate.getTime() === today.getTime();
   });
+  const latestCoverage = allEntries.reduce(
+    (coverage, entry) => ({
+      sabaq: coverage.sabaq || (entry.sabaqSaved && entry.sabaq.trim() ? entry.sabaq : ""),
+      sabaqPara:
+        coverage.sabaqPara ||
+        (entry.sabaqParaSaved && entry.sabaqPara.trim() ? entry.sabaqPara : ""),
+      manzil: coverage.manzil || (entry.manzilSaved && entry.manzil.trim() ? entry.manzil : ""),
+    }),
+    { sabaq: "", sabaqPara: "", manzil: "" }
+  );
 
   res.json({
     studentName: user.name,
@@ -126,6 +136,10 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     streak: streakStats.currentStreak,
     longestStreak: streakStats.longestStreak,
     longestStreakRange: streakStats.longestStreakRange,
+    sabaqEntries: allEntries
+      .filter((entry) => entry.sabaqSaved && entry.sabaq.trim())
+      .map((entry) => ({ sabaq: entry.sabaq })),
+    latestCoverage,
     todayEntry: todayEntry || null,
     recentEntries,
   });

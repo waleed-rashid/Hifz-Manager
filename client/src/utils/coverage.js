@@ -136,6 +136,146 @@ export const createCoverageFromEntry = (entry) => {
   };
 };
 
+export const createNextCoverageRange = (coverageText) => {
+  const parsedCoverage = parseCoverageRange(coverageText);
+
+  if (!parsedCoverage) {
+    return null;
+  }
+
+  const endSurah = getSurahByNumber(parsedCoverage.endSurahNumber);
+  const nextSurahNumber =
+    parsedCoverage.endAyah >= endSurah.ayahs
+      ? Math.min(parsedCoverage.endSurahNumber + 1, surahs[surahs.length - 1].number)
+      : parsedCoverage.endSurahNumber;
+  const nextSurah = getSurahByNumber(nextSurahNumber);
+  const nextAyah = parsedCoverage.endAyah >= endSurah.ayahs ? 1 : parsedCoverage.endAyah + 1;
+
+  return {
+    startSurahNumber: nextSurah.number,
+    startAyah: nextAyah,
+    endSurahNumber: nextSurah.number,
+    endAyah: nextAyah,
+  };
+};
+
+export const createNextCoverageFromLatest = (latestCoverage = {}) => ({
+  ...createDefaultCoverage(),
+  ...(createNextCoverageRange(latestCoverage.sabaq)
+    ? { sabaq: createNextCoverageRange(latestCoverage.sabaq) }
+    : {}),
+  ...(createNextCoverageRange(latestCoverage.sabaqPara)
+    ? { sabaqPara: createNextCoverageRange(latestCoverage.sabaqPara) }
+    : {}),
+  ...(createNextCoverageRange(latestCoverage.manzil)
+    ? { revision: createNextCoverageRange(latestCoverage.manzil) }
+    : {}),
+});
+
+export const buildSabaqCoverageMap = (sabaqEntries = []) => {
+  const coverageMap = surahs.reduce((map, surah) => {
+    map[surah.number] = new Set();
+    return map;
+  }, {});
+
+  sabaqEntries.forEach((entry) => {
+    const parsedCoverage = parseCoverageRange(entry.sabaq);
+
+    if (!parsedCoverage) {
+      return;
+    }
+
+    for (
+      let surahNumber = parsedCoverage.startSurahNumber;
+      surahNumber <= parsedCoverage.endSurahNumber;
+      surahNumber += 1
+    ) {
+      const surah = getSurahByNumber(surahNumber);
+      const firstAyah =
+        surahNumber === parsedCoverage.startSurahNumber ? parsedCoverage.startAyah : 1;
+      const lastAyah =
+        surahNumber === parsedCoverage.endSurahNumber ? parsedCoverage.endAyah : surah.ayahs;
+
+      for (let ayah = firstAyah; ayah <= lastAyah; ayah += 1) {
+        coverageMap[surahNumber].add(ayah);
+      }
+    }
+  });
+
+  return coverageMap;
+};
+
+export const getAvailableSurahsForSabaq = (coverageMap) =>
+  surahs.filter((surah) => (coverageMap[surah.number]?.size || 0) < surah.ayahs);
+
+export const getAvailableAyahsForSabaq = (coverageMap, surahNumber) => {
+  const surah = getSurahByNumber(surahNumber);
+  const coveredAyahs = coverageMap[surah.number] || new Set();
+
+  return Array.from({ length: surah.ayahs }, (_, index) => index + 1).filter(
+    (ayah) => !coveredAyahs.has(ayah)
+  );
+};
+
+const findNextAvailableSabaqReference = (coverageMap, preferredCoverage) => {
+  const preferredSurahNumber = preferredCoverage?.startSurahNumber || 1;
+  const preferredAyah = preferredCoverage?.startAyah || 1;
+
+  for (const surah of surahs) {
+    if (surah.number < preferredSurahNumber) {
+      continue;
+    }
+
+    const firstAyah = surah.number === preferredSurahNumber ? preferredAyah : 1;
+    const coveredAyahs = coverageMap[surah.number] || new Set();
+
+    for (let ayah = firstAyah; ayah <= surah.ayahs; ayah += 1) {
+      if (!coveredAyahs.has(ayah)) {
+        return { surahNumber: surah.number, ayah };
+      }
+    }
+  }
+
+  return null;
+};
+
+export const createNextSabaqCoverage = (coverageMap, preferredCoverage) => {
+  const nextReference = findNextAvailableSabaqReference(coverageMap, preferredCoverage);
+
+  if (!nextReference) {
+    return null;
+  }
+
+  return {
+    startSurahNumber: nextReference.surahNumber,
+    startAyah: nextReference.ayah,
+    endSurahNumber: nextReference.surahNumber,
+    endAyah: nextReference.ayah,
+  };
+};
+
+export const isSabaqRangeAvailable = (coverageMap, entry) => {
+  for (
+    let surahNumber = Number(entry.startSurahNumber);
+    surahNumber <= Number(entry.endSurahNumber);
+    surahNumber += 1
+  ) {
+    const surah = getSurahByNumber(surahNumber);
+    const coveredAyahs = coverageMap[surah.number] || new Set();
+    const firstAyah = surahNumber === Number(entry.startSurahNumber) ? Number(entry.startAyah) : 1;
+    const lastAyah =
+      surahNumber === Number(entry.endSurahNumber) ? Number(entry.endAyah) : surah.ayahs;
+
+    for (let ayah = firstAyah; ayah <= lastAyah; ayah += 1) {
+      if (coveredAyahs.has(ayah)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+};
+
 export const hasSavedCoverage = (coverageText, savedFlag) => {
   if (savedFlag === false) {
     return false;

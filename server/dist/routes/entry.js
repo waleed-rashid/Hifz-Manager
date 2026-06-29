@@ -33,7 +33,7 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
                 lt: tomorrow,
             },
         },
-        orderBy: { date: "desc" },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
     });
     const entryData = {
         ...(sabaq !== undefined ? { sabaq, sabaqSaved: true } : {}),
@@ -64,11 +64,12 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
         });
     const recentEntries = await prisma_1.prisma.dailyEntry.findMany({
         where: { userId: req.userId },
-        orderBy: { date: "desc" },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
         take: 7,
     });
     const entries = await prisma_1.prisma.dailyEntry.findMany({
         where: { userId: req.userId },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
         select: {
             date: true,
             sabaq: true,
@@ -88,6 +89,16 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
     const currentAyah = sabaqRange?.endAyah ?? user.currentAyah;
     const currentJuzProgressPercent = (0, quranProgress_1.getJuzProgressPercent)(currentSurah, currentAyah);
     const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(entries, (0, quranProgress_1.parseMemorizedJuzList)(user.memorizedJuzList), sabaqRange);
+    const latestCoverage = entries.reduce((coverage, savedEntry) => ({
+        sabaq: coverage.sabaq ||
+            (savedEntry.sabaqSaved && savedEntry.sabaq.trim() ? savedEntry.sabaq : ""),
+        sabaqPara: coverage.sabaqPara ||
+            (savedEntry.sabaqParaSaved && savedEntry.sabaqPara.trim()
+                ? savedEntry.sabaqPara
+                : ""),
+        manzil: coverage.manzil ||
+            (savedEntry.manzilSaved && savedEntry.manzil.trim() ? savedEntry.manzil : ""),
+    }), { sabaq: "", sabaqPara: "", manzil: "" });
     await prisma_1.prisma.user.update({
         where: { id: user.id },
         data: {
@@ -108,6 +119,10 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
         streak: streakStats.currentStreak,
         longestStreak: streakStats.longestStreak,
         longestStreakRange: streakStats.longestStreakRange,
+        sabaqEntries: entries
+            .filter((entry) => entry.sabaqSaved && entry.sabaq.trim())
+            .map((entry) => ({ sabaq: entry.sabaq })),
+        latestCoverage,
         progress: {
             juz: memorizedJuz.length,
             memorizedJuz,
@@ -128,7 +143,7 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
     }
     const entries = await prisma_1.prisma.dailyEntry.findMany({
         where: { userId: req.userId },
-        orderBy: { date: "desc" },
+        orderBy: [{ date: "desc" }, { id: "desc" }],
     });
     res.json(entries);
 });

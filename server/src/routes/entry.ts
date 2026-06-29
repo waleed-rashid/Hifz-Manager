@@ -43,7 +43,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
         lt: tomorrow,
       },
     },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
   });
   const entryData = {
     ...(sabaq !== undefined ? { sabaq, sabaqSaved: true } : {}),
@@ -77,12 +77,13 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
 
   const recentEntries = await prisma.dailyEntry.findMany({
     where: { userId: req.userId },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
     take: 7,
   });
 
   const entries = await prisma.dailyEntry.findMany({
     where: { userId: req.userId },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
     select: {
       date: true,
       sabaq: true,
@@ -108,6 +109,22 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     parseMemorizedJuzList(user.memorizedJuzList),
     sabaqRange
   );
+  const latestCoverage = entries.reduce(
+    (coverage, savedEntry) => ({
+      sabaq:
+        coverage.sabaq ||
+        (savedEntry.sabaqSaved && savedEntry.sabaq.trim() ? savedEntry.sabaq : ""),
+      sabaqPara:
+        coverage.sabaqPara ||
+        (savedEntry.sabaqParaSaved && savedEntry.sabaqPara.trim()
+          ? savedEntry.sabaqPara
+          : ""),
+      manzil:
+        coverage.manzil ||
+        (savedEntry.manzilSaved && savedEntry.manzil.trim() ? savedEntry.manzil : ""),
+    }),
+    { sabaq: "", sabaqPara: "", manzil: "" }
+  );
 
   await prisma.user.update({
     where: { id: user.id },
@@ -130,6 +147,10 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     streak: streakStats.currentStreak,
     longestStreak: streakStats.longestStreak,
     longestStreakRange: streakStats.longestStreakRange,
+    sabaqEntries: entries
+      .filter((entry) => entry.sabaqSaved && entry.sabaq.trim())
+      .map((entry) => ({ sabaq: entry.sabaq })),
+    latestCoverage,
     progress: {
       juz: memorizedJuz.length,
       memorizedJuz,
@@ -152,7 +173,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
 
   const entries = await prisma.dailyEntry.findMany({
     where: { userId: req.userId },
-    orderBy: { date: "desc" },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
   });
 
   res.json(entries);
