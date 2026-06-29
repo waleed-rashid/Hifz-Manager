@@ -3,6 +3,7 @@ import { prisma } from "../prisma";
 import { AuthRequest, authMiddleware } from "../middleware/auth";
 import {
   calculateCompletedJuz,
+  calculateCompletedSurahs,
   getJuzForAyahReference,
   getJuzProgressPercent,
   getLatestSabaqRange,
@@ -67,6 +68,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     allEntries,
     parseMemorizedJuzList(user.memorizedJuzList)
   );
+  const memorizedSurahs = calculateCompletedSurahs(allEntries);
   const latestSabaqRange = getLatestSabaqRange(allEntries);
   const currentJuz =
     latestSabaqRange && getJuzForAyahReference(latestSabaqRange.endSurahNumber, latestSabaqRange.endAyah);
@@ -133,7 +135,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
       currentAyah,
       currentJuzProgressPercent,
       pages: 0,
-      surahs: 0,
+      surahs: memorizedSurahs,
     },
     streak: streakStats.currentStreak,
     longestStreak: streakStats.longestStreak,

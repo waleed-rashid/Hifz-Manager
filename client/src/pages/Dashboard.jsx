@@ -176,8 +176,10 @@ export default function Dashboard() {
   };
 
   const saveEntry = async () => {
-    if (activeCoverageKeys.length === 0) {
-      alert("Choose Sabaq, Sabaq Para, or Revision first.");
+    const trimmedNotes = notes.trim();
+
+    if (activeCoverageKeys.length === 0 && !trimmedNotes) {
+      alert("Choose Sabaq, Sabaq Para, Revision, or add a note first.");
       return;
     }
 
@@ -188,7 +190,6 @@ export default function Dashboard() {
     const entryPayload = {
       coverage: selectedCoverage,
     };
-    const trimmedNotes = notes.trim();
 
     if (trimmedNotes) {
       entryPayload.notes = trimmedNotes;
@@ -331,15 +332,22 @@ export default function Dashboard() {
     { count: 1, label: "1/3" },
     { count: 0, label: "0/3" },
   ];
+  const canSaveEntry = activeCoverageKeys.length > 0 || notes.trim().length > 0;
 
   return (
     <div style={styles.page}>
       <header style={styles.header}>
         <p style={styles.kicker}>وَلَقَدْ يَسَّرْنَا ٱلْقُرْءَانَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍۢ</p>
+        <p style={styles.verseReference}>54:17</p>
+        <p style={styles.verseTranslation}>
+          And We have certainly made the Quran easy to remember.
+          <br />
+          So is there anyone who will be mindful?
+        </p>
         <h1 style={styles.greeting}>
           Assalamu Alaikum, <span style={styles.studentName}>{studentName}</span>.
         </h1>
-        <p style={styles.subtitle}>Let's stay consistent with your Hifz today.</p>
+        <p style={styles.subtitle}>Let's stay consistent today.</p>
       </header>
 
       <main style={styles.content}>
@@ -459,7 +467,7 @@ export default function Dashboard() {
 
             <div style={styles.coverageList}>
               {activeCoverageKeys.length === 0 ? (
-                <p style={styles.emptyCoverageText}>Choose what you want to add today.</p>
+                <p style={styles.emptyCoverageText}>Choose what you'd like to add.</p>
               ) : null}
 
               {coverageTypes
@@ -614,11 +622,11 @@ export default function Dashboard() {
               type="button"
               style={{
                 ...styles.button,
-                opacity: isSaving || activeCoverageKeys.length === 0 ? 0.7 : 1,
-                cursor: isSaving || activeCoverageKeys.length === 0 ? "not-allowed" : "pointer",
+                opacity: isSaving || !canSaveEntry ? 0.7 : 1,
+                cursor: isSaving || !canSaveEntry ? "not-allowed" : "pointer",
               }}
               onClick={saveEntry}
-              disabled={isSaving || activeCoverageKeys.length === 0}
+              disabled={isSaving || !canSaveEntry}
             >
               {isSaving ? "Saving..." : "Save Entry"}
             </button>
@@ -705,10 +713,24 @@ const styles = {
   },
   kicker: {
     color: "#4d7c65",
-    fontSize: 13,
+    fontSize: 17,
     fontWeight: 750,
     textTransform: "uppercase",
     marginBottom: 10,
+  },
+  verseReference: {
+    color: "#1f7a55",
+    fontSize: 13,
+    fontWeight: 800,
+    marginBottom: 5,
+  },
+  verseTranslation: {
+    maxWidth: 640,
+    margin: "0 auto 18px",
+    color: "#5b7067",
+    fontSize: 14,
+    lineHeight: 1.5,
+    fontWeight: 650,
   },
   greeting: {
     color: "#111815",
@@ -1001,7 +1023,7 @@ const styles = {
   },
   notesInput: {
     minHeight: 86,
-    resize: "vertical",
+    resize: "none",
     lineHeight: 1.45,
     fontFamily: "inherit",
   },
@@ -1041,6 +1063,9 @@ const styles = {
     marginTop: 9,
     paddingTop: 9,
     borderTop: "1px solid #edf2ee",
+    overflowWrap: "anywhere",
+    wordBreak: "break-word",
+    whiteSpace: "pre-wrap",
   },
   undoToast: {
     position: "fixed",

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLatestSabaqRange = exports.calculateCompletedJuz = exports.parseMemorizedJuzList = exports.getJuzProgressPercent = exports.getJuzForAyahReference = exports.normalizeCoverageRange = exports.parseCoverageRange = void 0;
+exports.getLatestSabaqRange = exports.calculateCompletedSurahs = exports.calculateCompletedJuz = exports.parseMemorizedJuzList = exports.getJuzProgressPercent = exports.getJuzForAyahReference = exports.normalizeCoverageRange = exports.parseCoverageRange = void 0;
 const surahs = [
     { number: 1, name: "Al-Fatihah", ayahs: 7 },
     { number: 2, name: "Al-Baqarah", ayahs: 286 },
@@ -313,6 +313,22 @@ const calculateCompletedJuz = (entries, existingMemorizedJuzList, currentSabaqRa
     return [...new Set([...existingMemorizedJuzList, ...completedFromEntries])].sort((a, b) => a - b);
 };
 exports.calculateCompletedJuz = calculateCompletedJuz;
+const calculateCompletedSurahs = (entries, currentSabaqRange) => {
+    const intervals = entries.flatMap((entry) => [entry.sabaq]
+        .map(exports.parseCoverageRange)
+        .filter((range) => Boolean(range))
+        .map(rangeToInterval));
+    if (currentSabaqRange) {
+        intervals.push(rangeToInterval(currentSabaqRange));
+    }
+    const mergedIntervals = mergeIntervals(intervals);
+    return surahs.filter((surah) => {
+        const surahStart = getGlobalAyahNumber(surah.number, 1);
+        const surahEnd = getGlobalAyahNumber(surah.number, surah.ayahs);
+        return mergedIntervals.some((coverageInterval) => coverageInterval.start <= surahStart && coverageInterval.end >= surahEnd);
+    }).length;
+};
+exports.calculateCompletedSurahs = calculateCompletedSurahs;
 const getLatestSabaqRange = (entries) => {
     const latestEntry = entries.find((entry) => (0, exports.parseCoverageRange)(entry.sabaq));
     return latestEntry ? (0, exports.parseCoverageRange)(latestEntry.sabaq) : null;

@@ -57,6 +57,7 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
     const streakStats = (0, streaks_1.calculateStreakStats)(allEntries, today);
     const weeklyActivity = (0, weeklyActivity_1.calculateWeeklyActivity)(allEntries, today);
     const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(allEntries, (0, quranProgress_1.parseMemorizedJuzList)(user.memorizedJuzList));
+    const memorizedSurahs = (0, quranProgress_1.calculateCompletedSurahs)(allEntries);
     const latestSabaqRange = (0, quranProgress_1.getLatestSabaqRange)(allEntries);
     const currentJuz = latestSabaqRange && (0, quranProgress_1.getJuzForAyahReference)(latestSabaqRange.endSurahNumber, latestSabaqRange.endAyah);
     const effectiveCurrentJuz = currentJuz ?? user.currentJuz;
@@ -113,7 +114,7 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
             currentAyah,
             currentJuzProgressPercent,
             pages: 0,
-            surahs: 0,
+            surahs: memorizedSurahs,
         },
         streak: streakStats.currentStreak,
         longestStreak: streakStats.longestStreak,

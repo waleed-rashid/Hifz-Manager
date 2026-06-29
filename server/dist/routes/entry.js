@@ -100,6 +100,7 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
     const currentAyah = sabaqRange?.endAyah ?? user.currentAyah;
     const currentJuzProgressPercent = (0, quranProgress_1.getJuzProgressPercent)(currentSurah, currentAyah);
     const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(entries, (0, quranProgress_1.parseMemorizedJuzList)(user.memorizedJuzList), sabaqRange);
+    const memorizedSurahs = (0, quranProgress_1.calculateCompletedSurahs)(entries, sabaqRange);
     const latestCoverage = entries.reduce((coverage, savedEntry) => ({
         sabaq: coverage.sabaq ||
             (savedEntry.sabaqSaved && savedEntry.sabaq.trim() ? savedEntry.sabaq : ""),
@@ -144,7 +145,7 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
             currentAyah,
             currentJuzProgressPercent,
             pages: 0,
-            surahs: 0,
+            surahs: memorizedSurahs,
         },
         recentEntries,
     });

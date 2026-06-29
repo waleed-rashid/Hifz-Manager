@@ -293,5 +293,6 @@ export const hasSavedCoverage = (coverageText, savedFlag) => {
 export const isVisibleRecentEntry = (entry) =>
   (hasSavedCoverage(entry.sabaq, entry.sabaqSaved) ||
     hasSavedCoverage(entry.sabaqPara, entry.sabaqParaSaved) ||
-    hasSavedCoverage(entry.manzil, entry.manzilSaved)) &&
+    hasSavedCoverage(entry.manzil, entry.manzilSaved) ||
+    String(entry.notes || "").trim().length > 0) &&
   !entry.sabaq?.toLowerCase().includes("surah yasin");

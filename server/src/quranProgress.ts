@@ -388,6 +388,33 @@ export const calculateCompletedJuz = (
   );
 };
 
+export const calculateCompletedSurahs = (
+  entries: EntryCoverage[],
+  currentSabaqRange?: CoverageRange | null
+) => {
+  const intervals = entries.flatMap((entry) =>
+    [entry.sabaq]
+      .map(parseCoverageRange)
+      .filter((range): range is CoverageRange => Boolean(range))
+      .map(rangeToInterval)
+  );
+
+  if (currentSabaqRange) {
+    intervals.push(rangeToInterval(currentSabaqRange));
+  }
+
+  const mergedIntervals = mergeIntervals(intervals);
+
+  return surahs.filter((surah) => {
+    const surahStart = getGlobalAyahNumber(surah.number, 1);
+    const surahEnd = getGlobalAyahNumber(surah.number, surah.ayahs);
+
+    return mergedIntervals.some(
+      (coverageInterval) => coverageInterval.start <= surahStart && coverageInterval.end >= surahEnd
+    );
+  }).length;
+};
+
 export const getLatestSabaqRange = (entries: EntryCoverage[]) => {
   const latestEntry = entries.find((entry) => parseCoverageRange(entry.sabaq));
 
