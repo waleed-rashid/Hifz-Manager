@@ -22,6 +22,42 @@ import {
 } from "../utils/coverage";
 import { formatEntryDate } from "../utils/dates";
 
+function BadgeIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="27"
+      height="27"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="8" r="4.6" />
+      <path d="m9.2 12.1-1 7.2L12 17.4l3.8 1.9-1-7.2" />
+      <circle cx="12" cy="8" r="1.7" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="27"
+      height="27"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M20.9 14.6A8.2 8.2 0 0 1 9.4 3.1a9.1 9.1 0 1 0 11.5 11.5Z" />
+    </svg>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [coverage, setCoverage] = useState(createDefaultCoverage);
@@ -442,6 +478,7 @@ export default function Dashboard() {
     <div className={darkMode ? "dashboard-page dashboard-dark" : "dashboard-page"} style={styles.page}>
       <div style={styles.topActions}>
         <button
+          className="top-icon-button"
           type="button"
           onClick={() => setShowBadges(true)}
           aria-label="Open achievement badges"
@@ -451,9 +488,10 @@ export default function Dashboard() {
             ...(darkMode ? styles.themeToggleDark : {}),
           }}
         >
-          🏅
+          <BadgeIcon />
         </button>
         <button
+          className="top-icon-button"
           type="button"
           onClick={() => setDarkMode((currentMode) => !currentMode)}
           aria-label={darkMode ? "Turn off dark mode" : "Turn on dark mode"}
@@ -463,20 +501,20 @@ export default function Dashboard() {
             ...(darkMode ? styles.themeToggleDark : {}),
           }}
         >
-          ☾
+          <MoonIcon />
         </button>
       </div>
 
       <header style={styles.header}>
         <p style={styles.kicker}>وَلَقَدْ يَسَّرْنَا ٱلْقُرْءَانَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍۢ</p>
-        <p style={styles.verseReference}>54:17</p>
+        <p className="dashboard-green-text" style={styles.verseReference}>54:17</p>
         <p style={styles.verseTranslation}>
           And We have certainly made the Quran easy to remember.
           <br />
           So is there anyone who will be mindful?
         </p>
         <h1 style={styles.greeting}>
-          Assalamu Alaikum, <span style={styles.studentName}>{studentName}</span>.
+          Assalamu Alaikum, <span className="dashboard-green-text" style={styles.studentName}>{studentName}</span>.
         </h1>
         <p style={styles.subtitle}>Let's stay consistent today.</p>
       </header>
@@ -490,28 +528,35 @@ export default function Dashboard() {
               <div style={styles.progressList}>
                 <div style={styles.progressItem}>
                   <span style={styles.progressLabel}>Ajzaa Memorized</span>
-                  <strong style={styles.progressValue}>{progress.juz || 0}</strong>
+                  <strong className="dashboard-soft-green dashboard-green-text" style={styles.progressValue}>
+                    {progress.juz || 0}
+                  </strong>
                 </div>
 
                 <div style={styles.progressItem}>
                   <span style={styles.progressLabel}>Surahs Memorized</span>
-                  <strong style={styles.progressValue}>{progress.surahs || 0}</strong>
+                  <strong className="dashboard-soft-green dashboard-green-text" style={styles.progressValue}>
+                    {progress.surahs || 0}
+                  </strong>
                 </div>
 
                 <div style={styles.progressItem}>
                   <span style={styles.progressLabel}>Current Ayah</span>
-                  <strong style={styles.progressTextValue}>{currentProgressText}</strong>
+                  <strong className="dashboard-soft-green dashboard-green-text" style={styles.progressTextValue}>
+                    {currentProgressText}
+                  </strong>
                 </div>
 
                 <div style={styles.currentJuzItem}>
                   <div style={styles.currentJuzHeader}>
                     <span style={styles.progressLabel}>Current Juz</span>
-                    <strong style={styles.progressTextValue}>
+                    <strong className="dashboard-soft-green dashboard-green-text" style={styles.progressTextValue}>
                       {progress.currentJuz ? `Juz ${progress.currentJuz}` : "Not set"}
                     </strong>
                   </div>
                   <div style={styles.progressBarTrack}>
                     <div
+                      className="dashboard-green-bg"
                       style={{
                         ...styles.progressBarFill,
                         width: `${progress.currentJuzProgressPercent || 0}%`,
@@ -529,14 +574,14 @@ export default function Dashboard() {
               <h2 style={styles.smallPanelTitle}>Streaks 🔥</h2>
 
               <div style={styles.streakGrid}>
-                <div style={styles.streakCard}>
+                <div className="dashboard-soft-green" style={styles.streakCard}>
                   <span style={styles.streakLabel}>Current</span>
-                  <strong style={styles.streakValue}>{data.streak}</strong>
+                  <strong className="dashboard-green-text" style={styles.streakValue}>{data.streak}</strong>
                 </div>
 
-                <div style={styles.streakCard}>
+                <div className="dashboard-soft-green" style={styles.streakCard}>
                   <span style={styles.streakLabel}>Longest</span>
-                  <strong style={styles.streakValue}>{data.longestStreak}</strong>
+                  <strong className="dashboard-green-text" style={styles.streakValue}>{data.longestStreak}</strong>
                   <span style={styles.streakDateRange}>{longestStreakRangeText}</span>
                 </div>
               </div>
@@ -550,6 +595,11 @@ export default function Dashboard() {
                   <div key={day.date} style={styles.weeklyDay}>
                     <span style={styles.weeklyDate}>{formatEntryDate(day.date).slice(0, 5)}</span>
                     <span
+                      className={
+                        day.completedCount === 3
+                          ? "weekly-activity-box dashboard-green-bg"
+                          : "weekly-activity-box"
+                      }
                       title={`${day.completedCount}/3 completed`}
                       style={{
                         ...styles.weeklyBox,
@@ -565,6 +615,11 @@ export default function Dashboard() {
                 {weeklyLegendItems.map((item) => (
                   <span key={item.count} style={styles.legendItem}>
                     <span
+                      className={
+                        item.count === 3
+                          ? "weekly-legend-swatch dashboard-green-bg"
+                          : "weekly-legend-swatch"
+                      }
                       style={{
                         ...styles.legendSwatch,
                         background: weeklyActivityColors[item.count],
@@ -582,8 +637,13 @@ export default function Dashboard() {
 
             <div style={styles.addButtonRow}>
               {coverageTypes.map((type) => (
-                <button
-                  key={type.key}
+                  <button
+                    className={
+                      activeCoverageKeys.includes(type.key)
+                        ? "entry-toggle-button coverage-toggle-active dashboard-green-bg"
+                        : "entry-toggle-button dashboard-soft-green dashboard-green-text"
+                    }
+                    key={type.key}
                   type="button"
                   onClick={() => toggleCoverageSection(type.key)}
                   style={{
@@ -598,7 +658,9 @@ export default function Dashboard() {
 
             <div style={styles.coverageList}>
               {activeCoverageKeys.length === 0 ? (
-                <p style={styles.emptyCoverageText}>Choose what you'd like to add.</p>
+                <p className="dashboard-dark-inner" style={styles.emptyCoverageText}>
+                  Choose what you'd like to add.
+                </p>
               ) : null}
 
               {coverageTypes
@@ -624,7 +686,7 @@ export default function Dashboard() {
                     <h3 style={styles.coverageTitle}>{type.label}</h3>
 
                     {!hasSabaqOptions ? (
-                      <p style={styles.emptyCoverageText}>
+                      <p className="dashboard-dark-inner" style={styles.emptyCoverageText}>
                         All available Sabaq ayahs have already been saved.
                       </p>
                     ) : null}
@@ -770,7 +832,7 @@ export default function Dashboard() {
               <p style={styles.emptyText}>No recent entries yet.</p>
             ) : (
               recentEntries.map((entry) => (
-                <div key={entry.id} style={styles.entry}>
+                <div key={entry.id} className="recent-entry-card" style={styles.entry}>
                   <p style={styles.entryDate}>{formatEntryDate(entry.date)}</p>
                   {hasSavedCoverage(entry.sabaq, entry.sabaqSaved) ? (
                     <p style={styles.entryLine}>
@@ -788,7 +850,7 @@ export default function Dashboard() {
                     </p>
                   ) : null}
                   {entry.notes?.trim() ? (
-                    <p style={styles.entryNote}>
+                    <p className="entry-note" style={styles.entryNote}>
                       <b>Notes:</b> {entry.notes}
                     </p>
                   ) : null}
@@ -800,12 +862,13 @@ export default function Dashboard() {
       </main>
 
       {pendingUndo ? (
-        <div style={styles.undoToast}>
-          <span style={styles.undoText}>Entry saved</span>
-          <button type="button" onClick={undoSavedEntry} style={styles.undoButton}>
+        <div className="dashboard-toast undo-toast" style={styles.undoToast}>
+          <span className="dashboard-toast-text" style={styles.undoText}>Entry saved</span>
+          <button className="dashboard-toast-action" type="button" onClick={undoSavedEntry} style={styles.undoButton}>
             Undo
           </button>
           <button
+            className="dashboard-toast-close"
             type="button"
             onClick={dismissUndoPrompt}
             aria-label="Dismiss undo"
@@ -816,11 +879,19 @@ export default function Dashboard() {
         </div>
       ) : null}
 
-      {deleteNotice ? <div style={styles.deleteNoticeToast}>{deleteNotice}</div> : null}
+      {deleteNotice ? (
+        <div className="dashboard-toast delete-notice-toast" style={styles.deleteNoticeToast}>
+          {deleteNotice}
+        </div>
+      ) : null}
 
       {showBadges ? (
         <div style={styles.badgeOverlay} onClick={() => setShowBadges(false)}>
-          <section style={styles.badgeModal} onClick={(event) => event.stopPropagation()}>
+          <section
+            className="achievement-badge-modal"
+            style={styles.badgeModal}
+            onClick={(event) => event.stopPropagation()}
+          >
             <div style={styles.badgeHeader}>
               <div>
                 <p style={styles.badgeEyebrow}>Milestones</p>
@@ -840,13 +911,17 @@ export default function Dashboard() {
               {achievementBadges.map((badge) => (
                 <div
                   key={badge.title}
-                  className="achievement-badge-card"
+                  className={
+                    badge.achieved
+                      ? "achievement-badge-card achievement-badge-achieved"
+                      : "achievement-badge-card achievement-badge-locked"
+                  }
                   style={{
                     ...styles.badgeCard,
                     ...(badge.achieved ? styles.badgeCardAchieved : styles.badgeCardLocked),
                   }}
                 >
-                  <div style={styles.badgeMark}>{badge.mark}</div>
+                  <div className="dashboard-green-bg" style={styles.badgeMark}>{badge.mark}</div>
                   <h3 style={styles.badgeName}>{badge.title}</h3>
                   <p className="achievement-badge-description" style={styles.badgeDescription}>
                     {badge.achieved ? badge.achievedDescription : badge.description}
@@ -879,25 +954,26 @@ const styles = {
     gap: 8,
   },
   topActionButton: {
-    width: 38,
-    minHeight: 36,
+    width: 52,
+    height: 52,
+    minHeight: 52,
     display: "grid",
     placeItems: "center",
     color: "#1f7a55",
-    background: "rgba(255,255,255,0.9)",
-    border: "1px solid #d8e3dc",
-    borderRadius: 8,
+    background: "#e7f4ed",
+    border: "1px solid #c5dfd0",
+    borderRadius: "50%",
     padding: 0,
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 850,
     lineHeight: 1,
     boxShadow: "0 12px 26px rgba(32, 63, 48, 0.1)",
     cursor: "pointer",
   },
   themeToggleDark: {
-    color: "#d9f5e7",
-    background: "rgba(24, 36, 31, 0.92)",
-    borderColor: "rgba(119, 154, 135, 0.35)",
+    color: "#ffffff",
+    background: "#0b2017",
+    borderColor: "rgba(79, 122, 98, 0.5)",
     boxShadow: "0 14px 30px rgba(0, 0, 0, 0.24)",
   },
   loading: {
@@ -1297,6 +1373,7 @@ const styles = {
     color: "#7a8d84",
     fontSize: 12,
     fontWeight: 700,
+    fontStyle: "italic",
     marginBottom: 8,
   },
   entryLine: {
