@@ -172,6 +172,155 @@ export const createNextCoverageFromLatest = (latestCoverage = {}) => ({
     : {}),
 });
 
+const juzStarts = [
+  { juz: 1, surah: 1, ayah: 1 },
+  { juz: 2, surah: 2, ayah: 142 },
+  { juz: 3, surah: 2, ayah: 253 },
+  { juz: 4, surah: 3, ayah: 93 },
+  { juz: 5, surah: 4, ayah: 24 },
+  { juz: 6, surah: 4, ayah: 148 },
+  { juz: 7, surah: 5, ayah: 82 },
+  { juz: 8, surah: 6, ayah: 111 },
+  { juz: 9, surah: 7, ayah: 88 },
+  { juz: 10, surah: 8, ayah: 41 },
+  { juz: 11, surah: 9, ayah: 93 },
+  { juz: 12, surah: 11, ayah: 6 },
+  { juz: 13, surah: 12, ayah: 53 },
+  { juz: 14, surah: 15, ayah: 1 },
+  { juz: 15, surah: 17, ayah: 1 },
+  { juz: 16, surah: 18, ayah: 75 },
+  { juz: 17, surah: 21, ayah: 1 },
+  { juz: 18, surah: 23, ayah: 1 },
+  { juz: 19, surah: 25, ayah: 21 },
+  { juz: 20, surah: 27, ayah: 56 },
+  { juz: 21, surah: 29, ayah: 46 },
+  { juz: 22, surah: 33, ayah: 31 },
+  { juz: 23, surah: 36, ayah: 28 },
+  { juz: 24, surah: 39, ayah: 32 },
+  { juz: 25, surah: 41, ayah: 47 },
+  { juz: 26, surah: 46, ayah: 1 },
+  { juz: 27, surah: 51, ayah: 31 },
+  { juz: 28, surah: 58, ayah: 1 },
+  { juz: 29, surah: 67, ayah: 1 },
+  { juz: 30, surah: 78, ayah: 1 },
+];
+
+const surahOffsets = surahs.reduce((offsets, surah, index) => {
+  const previousSurah = surahs[index - 1];
+  const previousOffset = previousSurah ? offsets[previousSurah.number] + previousSurah.ayahs : 0;
+
+  offsets[surah.number] = previousOffset;
+  return offsets;
+}, {});
+
+const quranAyahCount = surahs.reduce((total, surah) => total + surah.ayahs, 0);
+
+const getGlobalAyahNumber = (surahNumber, ayah) => surahOffsets[Number(surahNumber)] + Number(ayah);
+
+const getReferenceFromGlobalAyahNumber = (globalAyahNumber) => {
+  const clampedGlobalAyahNumber = Math.min(quranAyahCount, Math.max(1, globalAyahNumber));
+  const surah = [...surahs]
+    .reverse()
+    .find((candidate) => surahOffsets[candidate.number] < clampedGlobalAyahNumber);
+
+  return {
+    surahNumber: surah.number,
+    ayah: clampedGlobalAyahNumber - surahOffsets[surah.number],
+  };
+};
+
+const getPreviousAyahReference = (surahNumber, ayah) => {
+  if (ayah > 1) {
+    return { surah: surahNumber, ayah: ayah - 1 };
+  }
+
+  const previousSurah = surahs.find((surah) => surah.number === surahNumber - 1);
+
+  if (!previousSurah) {
+    return { surah: surahNumber, ayah };
+  }
+
+  return { surah: previousSurah.number, ayah: previousSurah.ayahs };
+};
+
+const juzIntervals = juzStarts.map((juzStart, index) => {
+  const nextJuzStart = juzStarts[index + 1];
+  const endReference = nextJuzStart
+    ? getPreviousAyahReference(nextJuzStart.surah, nextJuzStart.ayah)
+    : { surah: 114, ayah: 6 };
+
+  return {
+    juz: juzStart.juz,
+    start: getGlobalAyahNumber(juzStart.surah, juzStart.ayah),
+    end: getGlobalAyahNumber(endReference.surah, endReference.ayah),
+  };
+});
+
+const getJuzIntervalForReference = (surahNumber, ayah) => {
+  const globalAyahNumber = getGlobalAyahNumber(surahNumber, ayah);
+
+  return juzIntervals.find(
+    (interval) => globalAyahNumber >= interval.start && globalAyahNumber <= interval.end
+  );
+};
+
+const expandCoverageByAyahCount = (coverage, ayahCount) => {
+  const startGlobalAyah = getGlobalAyahNumber(coverage.startSurahNumber, coverage.startAyah);
+  const endReference = getReferenceFromGlobalAyahNumber(
+    startGlobalAyah + Math.max(1, Math.round(ayahCount)) - 1
+  );
+
+  return {
+    ...coverage,
+    endSurahNumber: endReference.surahNumber,
+    endAyah: endReference.ayah,
+  };
+};
+
+const expandCoverageByPages = (coverage, pages) => {
+  const juzInterval = getJuzIntervalForReference(coverage.startSurahNumber, coverage.startAyah);
+  const ayahsPerPage = juzInterval ? (juzInterval.end - juzInterval.start + 1) / 20 : 10;
+
+  return expandCoverageByAyahCount(coverage, Number(pages) * ayahsPerPage);
+};
+
+const expandCoverageByJuz = (coverage, juzAmount) => {
+  const juzInterval = getJuzIntervalForReference(coverage.startSurahNumber, coverage.startAyah);
+  const ayahsPerJuz = juzInterval ? juzInterval.end - juzInterval.start + 1 : 200;
+
+  return expandCoverageByAyahCount(coverage, Number(juzAmount) * ayahsPerJuz);
+};
+
+export const defaultLessonPreferences = {
+  averageSabaqPages: 0.5,
+  averageSabaqParaPages: 3,
+  averageRevisionJuz: 0.25,
+};
+
+export const createIdealCoverageFromLatest = (
+  latestCoverage = {},
+  lessonPreferences = defaultLessonPreferences,
+  sabaqCoverageMap
+) => {
+  const preferences = {
+    ...defaultLessonPreferences,
+    ...lessonPreferences,
+  };
+  const nextCoverage = createNextCoverageFromLatest(latestCoverage);
+  const nextSabaqCoverage = sabaqCoverageMap
+    ? createNextSabaqCoverage(sabaqCoverageMap, nextCoverage.sabaq)
+    : nextCoverage.sabaq;
+
+  return {
+    ...nextCoverage,
+    sabaq: nextSabaqCoverage
+      ? expandCoverageByPages(nextSabaqCoverage, preferences.averageSabaqPages)
+      : nextCoverage.sabaq,
+    sabaqPara: expandCoverageByPages(nextCoverage.sabaqPara, preferences.averageSabaqParaPages),
+    revision: expandCoverageByJuz(nextCoverage.revision, preferences.averageRevisionJuz),
+  };
+};
+
 export const buildSabaqCoverageMap = (sabaqEntries = []) => {
   const coverageMap = surahs.reduce((map, surah) => {
     map[surah.number] = new Set();

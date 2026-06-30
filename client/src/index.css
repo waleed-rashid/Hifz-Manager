@@ -271,6 +271,60 @@ h3 {
   filter: brightness(1.08);
 }
 
+.lesson-preference-slider {
+  height: 8px;
+  appearance: none;
+  cursor: pointer;
+  background: #d8ecdf;
+  border-radius: 999px;
+  outline: 0;
+}
+
+.lesson-preference-slider::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  appearance: none;
+  background: #1f7a55;
+  border: 3px solid #f4fbf7;
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(31, 122, 85, 0.24);
+}
+
+.lesson-preference-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #1f7a55;
+  border: 3px solid #f4fbf7;
+  border-radius: 50%;
+  box-shadow: 0 3px 8px rgba(31, 122, 85, 0.24);
+}
+
+.dashboard-dark .lesson-preference-slider {
+  background: #173327 !important;
+}
+
+.dashboard-dark .lesson-preference-slider::-webkit-slider-thumb {
+  background: #1f7a55;
+  border-color: #0d1411;
+}
+
+.dashboard-dark .lesson-preference-slider::-moz-range-thumb {
+  background: #1f7a55;
+  border-color: #0d1411;
+}
+
+.dashboard-dark .preference-cancel-button {
+  color: #e7f1eb !important;
+  background: #111b17 !important;
+  border-color: rgba(121, 154, 136, 0.28) !important;
+}
+
+.dashboard-dark .preference-slider-value {
+  color: #77d5a6 !important;
+  background: #173327 !important;
+  border-color: #285b45 !important;
+}
+
 .dashboard-dark .dashboard-toast {
   color: #e7f1eb !important;
   background: rgba(13, 20, 17, 0.98) !important;

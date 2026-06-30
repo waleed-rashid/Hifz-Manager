@@ -22,6 +22,10 @@ model User {
   currentSurah      Int?
   currentAyah       Int?
 
+  averageSabaqPages     Float @default(0.5)
+  averageSabaqParaPages Float @default(3)
+  averageRevisionJuz    Float @default(0.25)
+
   lastEntryDate DateTime?
 
   entries       DailyEntry[]

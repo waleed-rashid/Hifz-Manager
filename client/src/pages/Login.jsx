@@ -6,6 +6,9 @@ import hifzLogo from "../assets/hifz-logo.png";
 import { surahs } from "../data/surahs";
 
 const juzOptions = Array.from({ length: 30 }, (_, index) => index + 1);
+const sabaqPageOptions = [0.25, 0.5, 0.75, 1];
+const sabaqParaPageOptions = Array.from({ length: 10 }, (_, index) => index + 1);
+const revisionJuzOptions = [0.25, 0.5, 0.75, 1];
 
 export default function Login() {
   const [mode, setMode] = useState("login");
@@ -23,6 +26,9 @@ export default function Login() {
     currentJuz: 1,
     currentSurah: 1,
     currentAyah: 1,
+    averageSabaqPages: 0.5,
+    averageSabaqParaPages: 3,
+    averageRevisionJuz: 0.25,
   });
   const navigate = useNavigate();
   const location = useLocation();
@@ -108,6 +114,9 @@ export default function Login() {
         currentJuz: Number(signupForm.currentJuz),
         currentSurah: Number(signupForm.currentSurah),
         currentAyah: Number(signupForm.currentAyah),
+        averageSabaqPages: Number(signupForm.averageSabaqPages),
+        averageSabaqParaPages: Number(signupForm.averageSabaqParaPages),
+        averageRevisionJuz: Number(signupForm.averageRevisionJuz),
       });
 
       saveSession(res.data);
@@ -204,6 +213,8 @@ export default function Login() {
               <span style={signupStep === 1 ? styles.activeStep : styles.step}>1</span>
               <span style={styles.stepLine} />
               <span style={signupStep === 2 ? styles.activeStep : styles.step}>2</span>
+              <span style={styles.stepLine} />
+              <span style={signupStep === 3 ? styles.activeStep : styles.step}>3</span>
             </div>
 
             {signupStep === 1 ? (
@@ -255,7 +266,7 @@ export default function Login() {
                   Continue
                 </button>
               </>
-            ) : (
+            ) : signupStep === 2 ? (
               <>
                 <label style={styles.label}>
                   How many ajza have you memorized?
@@ -344,6 +355,80 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setSignupStep(1)}
+                    style={styles.secondaryButton}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSignupStep(3)}
+                    style={styles.button}
+                  >
+                    Continue
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={styles.preferenceGrid}>
+                  <label style={styles.label}>
+                    Average Sabaq
+                    <select
+                      value={signupForm.averageSabaqPages}
+                      onChange={(e) => updateSignupForm("averageSabaqPages", Number(e.target.value))}
+                      style={styles.input}
+                    >
+                      {sabaqPageOptions.map((pages) => (
+                        <option key={pages} value={pages}>
+                          {pages} {pages === 1 ? "page" : "pages"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={styles.label}>
+                    Average Sabaq Para
+                    <select
+                      value={signupForm.averageSabaqParaPages}
+                      onChange={(e) =>
+                        updateSignupForm("averageSabaqParaPages", Number(e.target.value))
+                      }
+                      style={styles.input}
+                    >
+                      {sabaqParaPageOptions.map((pages) => (
+                        <option key={pages} value={pages}>
+                          {pages} {pages === 1 ? "page" : "pages"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={styles.label}>
+                    Average Revision
+                    <select
+                      value={signupForm.averageRevisionJuz}
+                      onChange={(e) =>
+                        updateSignupForm("averageRevisionJuz", Number(e.target.value))
+                      }
+                      style={styles.input}
+                    >
+                      {revisionJuzOptions.map((juz) => (
+                        <option key={juz} value={juz}>
+                          {juz} {juz === 1 ? "juz" : "juz"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <p style={styles.helperText}>
+                  These will be used to preselect your ideal lesson ranges each day.
+                </p>
+
+                <div style={styles.actionRow}>
+                  <button
+                    type="button"
+                    onClick={() => setSignupStep(2)}
                     style={styles.secondaryButton}
                   >
                     Back
@@ -452,7 +537,7 @@ const styles = {
   },
   stepRow: {
     display: "grid",
-    gridTemplateColumns: "32px 1fr 32px",
+    gridTemplateColumns: "32px 1fr 32px 1fr 32px",
     alignItems: "center",
     gap: 10,
     marginBottom: 4,
@@ -502,6 +587,12 @@ const styles = {
     fontWeight: 700,
     marginBottom: 8,
   },
+  helperText: {
+    color: "#60756b",
+    fontSize: 13,
+    lineHeight: 1.45,
+    marginTop: -2,
+  },
   input: {
     width: "100%",
     minHeight: 44,
@@ -535,6 +626,10 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "0.8fr 1.4fr 0.8fr",
     gap: 10,
+  },
+  preferenceGrid: {
+    display: "grid",
+    gap: 12,
   },
   actionRow: {
     display: "grid",

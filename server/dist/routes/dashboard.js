@@ -29,6 +29,9 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
             currentJuz: true,
             currentSurah: true,
             currentAyah: true,
+            averageSabaqPages: true,
+            averageSabaqParaPages: true,
+            averageRevisionJuz: true,
         },
     });
     if (!user) {
@@ -110,6 +113,16 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
             id: user.id,
             name: user.name,
             email: user.email,
+            lessonPreferences: {
+                averageSabaqPages: user.averageSabaqPages,
+                averageSabaqParaPages: user.averageSabaqParaPages,
+                averageRevisionJuz: user.averageRevisionJuz,
+            },
+        },
+        lessonPreferences: {
+            averageSabaqPages: user.averageSabaqPages,
+            averageSabaqParaPages: user.averageSabaqParaPages,
+            averageRevisionJuz: user.averageRevisionJuz,
         },
         progress: {
             juz: memorizedJuz.length,
@@ -132,6 +145,42 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
         latestCoverage,
         todayEntry: todayEntry || null,
         recentEntries,
+    });
+});
+router.patch("/lesson-preferences", auth_1.authMiddleware, async (req, res) => {
+    if (!req.userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+    }
+    const averageSabaqPages = Number(req.body.averageSabaqPages);
+    const averageSabaqParaPages = Number(req.body.averageSabaqParaPages);
+    const averageRevisionJuz = Number(req.body.averageRevisionJuz);
+    const allowedSabaqPages = [0.25, 0.5, 0.75, 1];
+    const allowedSabaqParaPages = Array.from({ length: 10 }, (_, index) => index + 1);
+    const allowedRevisionJuz = [0.25, 0.5, 0.75, 1];
+    if (!allowedSabaqPages.includes(averageSabaqPages) ||
+        !allowedSabaqParaPages.includes(averageSabaqParaPages) ||
+        !allowedRevisionJuz.includes(averageRevisionJuz)) {
+        return res.status(400).json({ message: "Invalid lesson preferences" });
+    }
+    const user = await prisma_1.prisma.user.update({
+        where: { id: req.userId },
+        data: {
+            averageSabaqPages,
+            averageSabaqParaPages,
+            averageRevisionJuz,
+        },
+        select: {
+            averageSabaqPages: true,
+            averageSabaqParaPages: true,
+            averageRevisionJuz: true,
+        },
+    });
+    res.json({
+        lessonPreferences: {
+            averageSabaqPages: user.averageSabaqPages,
+            averageSabaqParaPages: user.averageSabaqParaPages,
+            averageRevisionJuz: user.averageRevisionJuz,
+        },
     });
 });
 exports.default = router;

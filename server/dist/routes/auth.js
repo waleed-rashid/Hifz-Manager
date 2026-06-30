@@ -10,7 +10,7 @@ const prisma_1 = require("../prisma");
 const router = express_1.default.Router();
 // SIGNUP
 router.post("/signup", async (req, res) => {
-    const { name, email, password, memorizedJuzCount = 0, memorizedJuzList = [], currentJuz, currentSurah, currentAyah, } = req.body;
+    const { name, email, password, memorizedJuzCount = 0, memorizedJuzList = [], currentJuz, currentSurah, currentAyah, averageSabaqPages = 0.5, averageSabaqParaPages = 3, averageRevisionJuz = 0.25, } = req.body;
     const existing = await prisma_1.prisma.user.findUnique({
         where: { email },
     });
@@ -28,6 +28,9 @@ router.post("/signup", async (req, res) => {
             currentJuz,
             currentSurah,
             currentAyah,
+            averageSabaqPages: Number(averageSabaqPages),
+            averageSabaqParaPages: Number(averageSabaqParaPages),
+            averageRevisionJuz: Number(averageRevisionJuz),
         },
     });
     const token = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET || "secret", { expiresIn: "7d" });
@@ -37,6 +40,11 @@ router.post("/signup", async (req, res) => {
             id: user.id,
             name: user.name,
             email: user.email,
+            lessonPreferences: {
+                averageSabaqPages: user.averageSabaqPages,
+                averageSabaqParaPages: user.averageSabaqParaPages,
+                averageRevisionJuz: user.averageRevisionJuz,
+            },
         },
     });
 });
@@ -60,6 +68,11 @@ router.post("/login", async (req, res) => {
             id: user.id,
             name: user.name,
             email: user.email,
+            lessonPreferences: {
+                averageSabaqPages: user.averageSabaqPages,
+                averageSabaqParaPages: user.averageSabaqParaPages,
+                averageRevisionJuz: user.averageRevisionJuz,
+            },
         },
     });
 });

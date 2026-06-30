@@ -16,6 +16,9 @@ router.post("/signup", async (req, res) => {
     currentJuz,
     currentSurah,
     currentAyah,
+    averageSabaqPages = 0.5,
+    averageSabaqParaPages = 3,
+    averageRevisionJuz = 0.25,
   } = req.body;
 
   const existing = await prisma.user.findUnique({
@@ -38,6 +41,9 @@ router.post("/signup", async (req, res) => {
       currentJuz,
       currentSurah,
       currentAyah,
+      averageSabaqPages: Number(averageSabaqPages),
+      averageSabaqParaPages: Number(averageSabaqParaPages),
+      averageRevisionJuz: Number(averageRevisionJuz),
     },
   });
 
@@ -53,6 +59,11 @@ router.post("/signup", async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      lessonPreferences: {
+        averageSabaqPages: user.averageSabaqPages,
+        averageSabaqParaPages: user.averageSabaqParaPages,
+        averageRevisionJuz: user.averageRevisionJuz,
+      },
     },
   });
 });
@@ -87,6 +98,11 @@ router.post("/login", async (req, res) => {
       id: user.id,
       name: user.name,
       email: user.email,
+      lessonPreferences: {
+        averageSabaqPages: user.averageSabaqPages,
+        averageSabaqParaPages: user.averageSabaqParaPages,
+        averageRevisionJuz: user.averageRevisionJuz,
+      },
     },
   });
 });

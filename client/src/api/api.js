@@ -32,6 +32,11 @@ export const getDashboardData = async () => {
   return res.data;
 };
 
+export const updateLessonPreferences = async (lessonPreferences) => {
+  const res = await api.patch("/dashboard/lesson-preferences", lessonPreferences);
+  return res.data;
+};
+
 export const createDailyEntry = async (entry) => {
   const res = await api.post("/entries", entry);
   return res.data;

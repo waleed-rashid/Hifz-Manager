@@ -4,14 +4,15 @@ import {
   deleteDailyEntry,
   getDashboardData,
   restoreDailyEntry,
+  updateLessonPreferences,
 } from "../api/api";
 import { surahs } from "../data/surahs";
 import {
   coverageTypes,
   buildSabaqCoverageMap,
-  createNextCoverageFromLatest,
-  createNextSabaqCoverage,
   createDefaultCoverage,
+  createIdealCoverageFromLatest,
+  defaultLessonPreferences,
   formatCoverageRange,
   formatRecentCoverage,
   getAvailableAyahsForSabaq,
@@ -58,6 +59,30 @@ function MoonIcon() {
   );
 }
 
+function LessonPreferencesIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="27"
+      height="27"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M5 7h14" />
+      <path d="M5 12h14" />
+      <path d="M5 17h14" />
+      <circle cx="9" cy="7" r="2" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="17" r="2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [coverage, setCoverage] = useState(createDefaultCoverage);
@@ -67,6 +92,10 @@ export default function Dashboard() {
   const [deleteNotice, setDeleteNotice] = useState("");
   const [darkMode, setDarkMode] = useState(false);
   const [showBadges, setShowBadges] = useState(false);
+  const [showLessonPreferences, setShowLessonPreferences] = useState(false);
+  const [lessonPreferences, setLessonPreferences] = useState(defaultLessonPreferences);
+  const [lessonPreferenceDraft, setLessonPreferenceDraft] = useState(defaultLessonPreferences);
+  const [isSavingPreferences, setIsSavingPreferences] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [loadError, setLoadError] = useState("");
   const undoTimeoutRef = useRef(null);
@@ -74,13 +103,20 @@ export default function Dashboard() {
 
   const applyDashboardData = (dashboardData) => {
     const sabaqCoverageMap = buildSabaqCoverageMap(dashboardData.sabaqEntries);
-    const nextCoverage = createNextCoverageFromLatest(dashboardData.latestCoverage);
+    const preferences = {
+      ...defaultLessonPreferences,
+      ...(dashboardData.lessonPreferences || dashboardData.user?.lessonPreferences || {}),
+    };
+    const nextCoverage = createIdealCoverageFromLatest(
+      dashboardData.latestCoverage,
+      preferences,
+      sabaqCoverageMap
+    );
 
     setData(dashboardData);
-    setCoverage({
-      ...nextCoverage,
-      sabaq: createNextSabaqCoverage(sabaqCoverageMap, nextCoverage.sabaq) || nextCoverage.sabaq,
-    });
+    setLessonPreferences(preferences);
+    setLessonPreferenceDraft(preferences);
+    setCoverage(nextCoverage);
   };
 
   const showUndoPrompt = (undoOperation) => {
@@ -308,14 +344,13 @@ export default function Dashboard() {
       });
       setCoverage((currentCoverage) => {
         const nextSabaqCoverageMap = buildSabaqCoverageMap(savedEntry.sabaqEntries);
-        const nextCoverage = createNextCoverageFromLatest(savedEntry.latestCoverage);
+        const nextCoverage = createIdealCoverageFromLatest(
+          savedEntry.latestCoverage,
+          lessonPreferences,
+          nextSabaqCoverageMap
+        );
 
-        return {
-          ...nextCoverage,
-          sabaq:
-            createNextSabaqCoverage(nextSabaqCoverageMap, nextCoverage.sabaq) ||
-            currentCoverage.sabaq,
-        };
+        return nextCoverage || currentCoverage;
       });
       setActiveCoverageKeys([]);
       setNotes("");
@@ -352,6 +387,53 @@ export default function Dashboard() {
       showDeleteNotice();
     } catch (error) {
       alert(error.response?.data?.message || "Undo failed. Please try again.");
+    }
+  };
+
+  const openLessonPreferences = () => {
+    setLessonPreferenceDraft(lessonPreferences);
+    setShowLessonPreferences(true);
+  };
+
+  const updateLessonPreferenceDraft = (field, value) => {
+    setLessonPreferenceDraft((currentDraft) => ({
+      ...currentDraft,
+      [field]: Number(value),
+    }));
+  };
+
+  const saveLessonPreferences = async () => {
+    setIsSavingPreferences(true);
+
+    try {
+      const response = await updateLessonPreferences(lessonPreferenceDraft);
+      const nextPreferences = {
+        ...defaultLessonPreferences,
+        ...(response.lessonPreferences || lessonPreferenceDraft),
+      };
+      const nextSabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries);
+      const nextCoverage = createIdealCoverageFromLatest(
+        data.latestCoverage,
+        nextPreferences,
+        nextSabaqCoverageMap
+      );
+
+      setLessonPreferences(nextPreferences);
+      setLessonPreferenceDraft(nextPreferences);
+      setData((currentData) => ({
+        ...currentData,
+        lessonPreferences: nextPreferences,
+        user: {
+          ...currentData.user,
+          lessonPreferences: nextPreferences,
+        },
+      }));
+      setCoverage(nextCoverage);
+      setShowLessonPreferences(false);
+    } catch (error) {
+      alert(error.response?.data?.message || "Could not update lesson preferences.");
+    } finally {
+      setIsSavingPreferences(false);
     }
   };
 
@@ -394,6 +476,10 @@ export default function Dashboard() {
       )}`
     : "No streak yet";
   const weeklyActivity = Array.isArray(data.weeklyActivity) ? data.weeklyActivity : [];
+  const idealLessonSummary = coverageTypes.map((type) => ({
+    ...type,
+    value: formatCoverageRange(coverage[type.key]),
+  }));
   const weeklyActivityColors = {
     0: "#c94a3d",
     1: "#e6c45b",
@@ -477,6 +563,19 @@ export default function Dashboard() {
   return (
     <div className={darkMode ? "dashboard-page dashboard-dark" : "dashboard-page"} style={styles.page}>
       <div style={styles.topActions}>
+        <button
+          className="top-icon-button"
+          type="button"
+          onClick={openLessonPreferences}
+          aria-label="Open lesson preferences"
+          title="Lesson preferences"
+          style={{
+            ...styles.topActionButton,
+            ...(darkMode ? styles.themeToggleDark : {}),
+          }}
+        >
+          <LessonPreferencesIcon />
+        </button>
         <button
           className="top-icon-button"
           type="button"
@@ -654,6 +753,17 @@ export default function Dashboard() {
                   + {type.label}
                 </button>
               ))}
+            </div>
+
+            <div className="dashboard-dark-inner" style={styles.idealLessonBox}>
+              <p style={styles.idealLessonTitle}>Ideal for today</p>
+              <div style={styles.idealLessonGrid}>
+                {idealLessonSummary.map((item) => (
+                  <span key={item.key} style={styles.idealLessonItem}>
+                    <b>{item.label}:</b> {item.value}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div style={styles.coverageList}>
@@ -882,6 +992,121 @@ export default function Dashboard() {
       {deleteNotice ? (
         <div className="dashboard-toast delete-notice-toast" style={styles.deleteNoticeToast}>
           {deleteNotice}
+        </div>
+      ) : null}
+
+      {showLessonPreferences ? (
+        <div style={styles.badgeOverlay} onClick={() => setShowLessonPreferences(false)}>
+          <section
+            className="achievement-badge-modal"
+            style={styles.preferencesModal}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.badgeHeader}>
+              <div>
+                <p style={styles.badgeEyebrow}>Daily Plan</p>
+                <h2 style={styles.badgeTitle}>Lesson Preferences</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLessonPreferences(false)}
+                aria-label="Close lesson preferences"
+                style={styles.badgeCloseButton}
+              >
+                X
+              </button>
+            </div>
+
+            <div style={styles.preferencesForm}>
+              <label style={styles.label}>
+                <span style={styles.preferenceLabelText}>Average Sabaq</span>
+                <div style={styles.preferenceSliderRow}>
+                  <input
+                    className="lesson-preference-slider"
+                    type="range"
+                    min="0.25"
+                    max="1"
+                    step="0.25"
+                    value={lessonPreferenceDraft.averageSabaqPages}
+                    onChange={(event) =>
+                      updateLessonPreferenceDraft("averageSabaqPages", event.target.value)
+                    }
+                    style={styles.preferenceSlider}
+                  />
+                  <span className="preference-slider-value" style={styles.preferenceSliderValue}>
+                    {lessonPreferenceDraft.averageSabaqPages}{" "}
+                    {lessonPreferenceDraft.averageSabaqPages === 1 ? "page" : "pages"}
+                  </span>
+                </div>
+              </label>
+
+              <label style={styles.label}>
+                <span style={styles.preferenceLabelText}>Average Sabaq Para</span>
+                <div style={styles.preferenceSliderRow}>
+                  <input
+                    className="lesson-preference-slider"
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={lessonPreferenceDraft.averageSabaqParaPages}
+                    onChange={(event) =>
+                      updateLessonPreferenceDraft("averageSabaqParaPages", event.target.value)
+                    }
+                    style={styles.preferenceSlider}
+                  />
+                  <span className="preference-slider-value" style={styles.preferenceSliderValue}>
+                    {lessonPreferenceDraft.averageSabaqParaPages}{" "}
+                    {lessonPreferenceDraft.averageSabaqParaPages === 1 ? "page" : "pages"}
+                  </span>
+                </div>
+              </label>
+
+              <label style={styles.label}>
+                <span style={styles.preferenceLabelText}>Average Revision</span>
+                <div style={styles.preferenceSliderRow}>
+                  <input
+                    className="lesson-preference-slider"
+                    type="range"
+                    min="0.25"
+                    max="1"
+                    step="0.25"
+                    value={lessonPreferenceDraft.averageRevisionJuz}
+                    onChange={(event) =>
+                      updateLessonPreferenceDraft("averageRevisionJuz", event.target.value)
+                    }
+                    style={styles.preferenceSlider}
+                  />
+                  <span className="preference-slider-value" style={styles.preferenceSliderValue}>
+                    {lessonPreferenceDraft.averageRevisionJuz} juz
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            <div style={styles.preferenceActions}>
+              <button
+                className="preference-cancel-button"
+                type="button"
+                onClick={() => setShowLessonPreferences(false)}
+                style={styles.preferenceSecondaryButton}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveLessonPreferences}
+                disabled={isSavingPreferences}
+                style={{
+                  ...styles.preferencePrimaryButton,
+                  opacity: isSavingPreferences ? 0.7 : 1,
+                  cursor: isSavingPreferences ? "not-allowed" : "pointer",
+                }}
+              >
+                {isSavingPreferences ? "Saving..." : "Confirm"}
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
 
@@ -1297,6 +1522,32 @@ const styles = {
     borderColor: "#1b6f4d",
     cursor: "pointer",
   },
+  idealLessonBox: {
+    display: "grid",
+    gap: 8,
+    color: "#40534b",
+    background: "#fbfdfb",
+    border: "1px solid #e3ece6",
+    borderRadius: 8,
+    padding: "12px 13px",
+    marginBottom: 16,
+  },
+  idealLessonTitle: {
+    color: "#1f7a55",
+    fontSize: 12,
+    fontWeight: 850,
+    textTransform: "uppercase",
+  },
+  idealLessonGrid: {
+    display: "grid",
+    gap: 6,
+  },
+  idealLessonItem: {
+    color: "#40534b",
+    fontSize: 12,
+    lineHeight: 1.4,
+    overflowWrap: "anywhere",
+  },
   coverageList: {
     display: "grid",
     gap: 16,
@@ -1477,6 +1728,14 @@ const styles = {
     padding: 24,
     boxShadow: "0 28px 70px rgba(13, 21, 17, 0.24)",
   },
+  preferencesModal: {
+    width: "min(460px, 100%)",
+    background: "rgba(255,255,255,0.97)",
+    border: "1px solid #dce6df",
+    borderRadius: 8,
+    padding: 24,
+    boxShadow: "0 28px 70px rgba(13, 21, 17, 0.24)",
+  },
   badgeHeader: {
     display: "flex",
     alignItems: "start",
@@ -1509,6 +1768,59 @@ const styles = {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
     gap: 12,
+  },
+  preferencesForm: {
+    display: "grid",
+    gap: 18,
+    marginBottom: 18,
+  },
+  preferenceSliderRow: {
+    display: "grid",
+    gridTemplateColumns: "1fr 86px",
+    alignItems: "center",
+    gap: 13,
+    minHeight: 40,
+  },
+  preferenceLabelText: {
+    display: "block",
+    textAlign: "center",
+  },
+  preferenceSlider: {
+    width: "100%",
+  },
+  preferenceSliderValue: {
+    color: "#1f7a55",
+    background: "#edf7f1",
+    border: "1px solid #d8ecdf",
+    borderRadius: 7,
+    padding: "7px 9px",
+    textAlign: "center",
+    fontSize: 12,
+    fontWeight: 850,
+    whiteSpace: "nowrap",
+  },
+  preferenceActions: {
+    display: "grid",
+    gridTemplateColumns: "0.8fr 1fr",
+    gap: 10,
+  },
+  preferencePrimaryButton: {
+    minHeight: 42,
+    color: "white",
+    background: "#1f7a55",
+    border: "1px solid #1b6f4d",
+    borderRadius: 7,
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+  preferenceSecondaryButton: {
+    minHeight: 42,
+    color: "#1f7a55",
+    background: "#edf7f1",
+    border: "1px solid #d8ecdf",
+    borderRadius: 7,
+    fontWeight: 800,
+    cursor: "pointer",
   },
   badgeCard: {
     position: "relative",
