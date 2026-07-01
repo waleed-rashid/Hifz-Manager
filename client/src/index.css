@@ -193,6 +193,7 @@ h3 {
 }
 
 .dashboard-dark .recent-entry-card,
+.dashboard-dark .recent-empty-text,
 .dashboard-dark .achievement-badge-modal,
 .dashboard-dark .achievement-badge-card,
 .dashboard-dark .achievement-badge-description,
@@ -374,6 +375,14 @@ h3 {
 
 .dashboard-dark .delete-notice-toast {
   color: #ffffff !important;
+}
+
+.dashboard-dark .badge-notice-toast {
+  color: #77d5a6 !important;
+}
+
+.dashboard-dark .streak-notice-toast {
+  color: #77d5a6 !important;
 }
 
 .dashboard-dark [style*="#c94a3d"] {

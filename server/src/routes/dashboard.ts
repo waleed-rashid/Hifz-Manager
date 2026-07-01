@@ -11,6 +11,7 @@ import {
 } from "../quranProgress";
 import { calculateStreakStats } from "../streaks";
 import { calculateWeeklyActivity } from "../weeklyActivity";
+import { calculateAchievementStats } from "../achievements";
 
 const router = express.Router();
 
@@ -24,6 +25,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     where: { id: req.userId },
     select: {
       id: true,
+      createdAt: true,
       name: true,
       email: true,
       streak: true,
@@ -31,6 +33,7 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
       lastEntryDate: true,
       memorizedJuzCount: true,
       memorizedJuzList: true,
+      onboardingMemorizedJuzList: true,
       currentJuz: true,
       currentSurah: true,
       currentAyah: true,
@@ -66,10 +69,10 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     },
   });
   const streakStats = calculateStreakStats(allEntries, today);
-  const weeklyActivity = calculateWeeklyActivity(allEntries, today);
+  const weeklyActivity = calculateWeeklyActivity(allEntries, today, user.createdAt);
   const memorizedJuz = calculateCompletedJuz(
     allEntries,
-    parseMemorizedJuzList(user.memorizedJuzList)
+    parseMemorizedJuzList(user.onboardingMemorizedJuzList)
   );
   const memorizedSurahs = calculateCompletedSurahs(allEntries);
   const latestSabaqRange = getLatestSabaqRange(allEntries);
@@ -122,16 +125,16 @@ router.get("/", authMiddleware, async (req: AuthRequest, res) => {
     }),
     { sabaq: "", sabaqPara: "", manzil: "" }
   );
-  const achievementStats = {
-    totalEntries: allEntries.length,
-    revisionSessions: allEntries.filter((entry) => entry.manzilSaved && entry.manzil.trim())
-      .length,
-  };
+  const achievementStats = calculateAchievementStats(
+    allEntries,
+    user.onboardingMemorizedJuzList
+  );
 
   res.json({
     studentName: user.name,
     user: {
       id: user.id,
+      createdAt: user.createdAt,
       name: user.name,
       email: user.email,
       lessonPreferences: {

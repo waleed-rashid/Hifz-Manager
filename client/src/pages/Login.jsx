@@ -216,7 +216,21 @@ export default function Login() {
       saveSession(res.data);
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setLoginError(err.response?.data?.message || "Login failed. Please check your email and password.");
+      const responseMessage = err.response?.data?.message;
+      const responseMessages = Array.isArray(err.response?.data?.messages)
+        ? err.response.data.messages
+        : responseMessage
+          ? [responseMessage]
+          : [];
+      const emailMissingMessage = responseMessages.find((message) =>
+        String(message).toLowerCase().includes("email")
+      );
+
+      setLoginError(
+        emailMissingMessage ||
+          responseMessages[0] ||
+          "Login failed. Please check your email and password."
+      );
     } finally {
       setIsLoading(false);
     }

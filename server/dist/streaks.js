@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calculateLongestStreakRange = exports.calculateStreakStats = void 0;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const MINIMUM_VISIBLE_STREAK = 3;
 const toDayKey = (dateValue) => {
     const date = new Date(dateValue);
     date.setHours(0, 0, 0, 0);
@@ -71,15 +72,19 @@ const calculateStreakStats = (entries, todayValue = new Date()) => {
     today.setHours(0, 0, 0, 0);
     const lastCompletedDate = new Date(dayKeys[dayKeys.length - 1]);
     const daysSinceLastCompleted = (today.getTime() - lastCompletedDate.getTime()) / MS_PER_DAY;
-    const currentStreak = daysSinceLastCompleted <= 1 ? finalRunLength : 0;
+    const activeRunLength = daysSinceLastCompleted <= 1 ? finalRunLength : 0;
+    const currentStreak = activeRunLength >= MINIMUM_VISIBLE_STREAK ? activeRunLength : 0;
+    const longestStreak = bestLength >= MINIMUM_VISIBLE_STREAK ? bestLength : 0;
     return {
         currentStreak,
-        longestStreak: bestLength,
-        longestStreakRange: {
-            startDate: bestStart,
-            endDate: bestEnd,
-            length: bestLength,
-        },
+        longestStreak,
+        longestStreakRange: longestStreak > 0
+            ? {
+                startDate: bestStart,
+                endDate: bestEnd,
+                length: bestLength,
+            }
+            : null,
         lastCompletedDate: finalRunEnd,
     };
 };

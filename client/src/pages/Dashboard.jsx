@@ -83,6 +83,96 @@ function LessonPreferencesIcon() {
   );
 }
 
+const getAchievementBadges = (dashboardData = {}) => {
+  const progress = dashboardData.progress || {};
+  const achievementStats = dashboardData.achievementStats || {};
+  const awardedDates = achievementStats.awardedDates || {};
+
+  return [
+    {
+      key: "firstEntry",
+      title: "First Entry",
+      mark: "1",
+      achieved: (achievementStats.totalEntries || 0) >= 1,
+      awardedDate: awardedDates.firstEntry,
+      description: "Save your first dashboard entry.",
+      achievedDescription: "You saved your first dashboard entry.",
+    },
+    {
+      key: "sevenDayStreak",
+      title: "One Week Strong",
+      mark: "7 🔥",
+      achieved: (dashboardData.longestStreak || 0) >= 7,
+      awardedDate: awardedDates.sevenDayStreak,
+      description: "Log all 3 daily sections 7 days in a row.",
+      achievedDescription: "You reached a 7 day streak.",
+    },
+    {
+      key: "thirtyDayStreak",
+      title: "30 Day Streak",
+      mark: "30 🔥",
+      achieved: (dashboardData.longestStreak || 0) >= 30,
+      awardedDate: awardedDates.thirtyDayStreak,
+      description: "Log all 3 daily sections 30 days in a row.",
+      achievedDescription: "You reached a 30 day streak.",
+    },
+    {
+      key: "firstJuz",
+      title: "First Juz",
+      mark: "1/30",
+      achieved: (progress.juz || 0) >= 1,
+      awardedDate: awardedDates.firstJuz,
+      description: "Memorize 1 juz.",
+      achievedDescription: "You memorized 1 juz.",
+    },
+    {
+      key: "fiveAjzaa",
+      title: "5 Ajzaa",
+      mark: "5/30",
+      achieved: (progress.juz || 0) >= 5,
+      awardedDate: awardedDates.fiveAjzaa,
+      description: "Memorize 5 ajzaa.",
+      achievedDescription: "You memorized 5 ajzaa.",
+    },
+    {
+      key: "fifteenAjzaa",
+      title: "15 Ajzaa",
+      mark: "15/30",
+      achieved: (progress.juz || 0) >= 15,
+      awardedDate: awardedDates.fifteenAjzaa,
+      description: "Memorize 15 ajzaa.",
+      achievedDescription: "You memorized 15 ajzaa.",
+    },
+    {
+      key: "firstSurah",
+      title: "First Surah",
+      mark: "1/114",
+      achieved: (progress.surahs || 0) >= 1,
+      awardedDate: awardedDates.firstSurah,
+      description: "Finish memorizing a surah.",
+      achievedDescription: "You memorized your first surah.",
+    },
+    {
+      key: "fiftyRevisions",
+      title: "50 Revisions",
+      mark: "50",
+      achieved: (achievementStats.revisionSessions || 0) >= 50,
+      awardedDate: awardedDates.fiftyRevisions,
+      description: "Save 50 Revision sessions.",
+      achievedDescription: "You logged 50 Revision sessions.",
+    },
+    {
+      key: "hundredRevisions",
+      title: "100 Revisions",
+      mark: "100",
+      achieved: (achievementStats.revisionSessions || 0) >= 100,
+      awardedDate: awardedDates.hundredRevisions,
+      description: "Save 100 Revision sessions.",
+      achievedDescription: "You logged 100 Revision sessions.",
+    },
+  ];
+};
+
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [coverage, setCoverage] = useState(createDefaultCoverage);
@@ -90,6 +180,8 @@ export default function Dashboard() {
   const [notes, setNotes] = useState("");
   const [pendingUndo, setPendingUndo] = useState(null);
   const [deleteNotice, setDeleteNotice] = useState("");
+  const [badgeNotice, setBadgeNotice] = useState("");
+  const [streakNotice, setStreakNotice] = useState("");
   const [darkMode, setDarkMode] = useState(false);
   const [showBadges, setShowBadges] = useState(false);
   const [showLessonPreferences, setShowLessonPreferences] = useState(false);
@@ -100,9 +192,14 @@ export default function Dashboard() {
   const [loadError, setLoadError] = useState("");
   const undoTimeoutRef = useRef(null);
   const deleteNoticeTimeoutRef = useRef(null);
+  const badgeNoticeTimeoutRef = useRef(null);
+  const streakNoticeTimeoutRef = useRef(null);
 
   const applyDashboardData = (dashboardData) => {
-    const sabaqCoverageMap = buildSabaqCoverageMap(dashboardData.sabaqEntries);
+    const sabaqCoverageMap = buildSabaqCoverageMap(
+      dashboardData.sabaqEntries,
+      dashboardData.progress?.memorizedJuz
+    );
     const preferences = {
       ...defaultLessonPreferences,
       ...(dashboardData.lessonPreferences || dashboardData.user?.lessonPreferences || {}),
@@ -152,6 +249,30 @@ export default function Dashboard() {
     }, 2600);
   };
 
+  const showBadgeNotice = (badgeTitle) => {
+    if (badgeNoticeTimeoutRef.current) {
+      window.clearTimeout(badgeNoticeTimeoutRef.current);
+    }
+
+    setBadgeNotice(`New badge unlocked: ${badgeTitle}`);
+    badgeNoticeTimeoutRef.current = window.setTimeout(() => {
+      setBadgeNotice("");
+      badgeNoticeTimeoutRef.current = null;
+    }, 7000);
+  };
+
+  const showStreakNotice = (streakLength) => {
+    if (streakNoticeTimeoutRef.current) {
+      window.clearTimeout(streakNoticeTimeoutRef.current);
+    }
+
+    setStreakNotice(`Streak started: ${streakLength} days`);
+    streakNoticeTimeoutRef.current = window.setTimeout(() => {
+      setStreakNotice("");
+      streakNoticeTimeoutRef.current = null;
+    }, 7000);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -172,6 +293,14 @@ export default function Dashboard() {
       if (deleteNoticeTimeoutRef.current) {
         window.clearTimeout(deleteNoticeTimeoutRef.current);
       }
+
+      if (badgeNoticeTimeoutRef.current) {
+        window.clearTimeout(badgeNoticeTimeoutRef.current);
+      }
+
+      if (streakNoticeTimeoutRef.current) {
+        window.clearTimeout(streakNoticeTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -183,7 +312,10 @@ export default function Dashboard() {
         const selectedSurah = getSurahByNumber(value);
         const availableAyahs =
           typeKey === "sabaq"
-            ? getAvailableAyahsForSabaq(buildSabaqCoverageMap(data?.sabaqEntries), selectedSurah.number)
+            ? getAvailableAyahsForSabaq(
+                buildSabaqCoverageMap(data?.sabaqEntries, data?.progress?.memorizedJuz),
+                selectedSurah.number
+              )
             : [];
         const firstAvailableAyah = availableAyahs[0] || 1;
         const nextEntry = {
@@ -210,7 +342,10 @@ export default function Dashboard() {
         const selectedSurah = getSurahByNumber(value);
         const availableAyahs =
           typeKey === "sabaq"
-            ? getAvailableAyahsForSabaq(buildSabaqCoverageMap(data?.sabaqEntries), selectedSurah.number)
+            ? getAvailableAyahsForSabaq(
+                buildSabaqCoverageMap(data?.sabaqEntries, data?.progress?.memorizedJuz),
+                selectedSurah.number
+              )
             : [];
         const lastAvailableAyah = availableAyahs[availableAyahs.length - 1] || selectedSurah.ayahs;
         const nextEntry = {
@@ -288,7 +423,10 @@ export default function Dashboard() {
     }
 
     if (activeCoverageKeys.includes("sabaq")) {
-      const sabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries);
+      const sabaqCoverageMap = buildSabaqCoverageMap(
+        data.sabaqEntries,
+        data.progress?.memorizedJuz
+      );
 
       if (!isSabaqRangeAvailable(sabaqCoverageMap, coverage.sabaq)) {
         alert("That Sabaq range includes ayahs already saved. Choose only available ayahs.");
@@ -313,39 +451,55 @@ export default function Dashboard() {
       const returnedRecentEntries = Array.isArray(savedEntry.recentEntries)
         ? savedEntry.recentEntries
         : [];
+      const currentRecentEntries = Array.isArray(data.recentEntries) ? data.recentEntries : [];
+      const nextRecentEntries = [
+        savedEntry.entry,
+        ...returnedRecentEntries,
+        ...currentRecentEntries,
+      ]
+        .filter(
+          (entry, index, entries) =>
+            entry?.id && entries.findIndex((candidate) => candidate.id === entry.id) === index
+        )
+        .slice(0, 7);
+      const nextDashboardData = {
+        ...data,
+        streak: savedEntry.streak,
+        longestStreak: savedEntry.longestStreak,
+        longestStreakRange: savedEntry.longestStreakRange,
+        weeklyActivity: savedEntry.weeklyActivity,
+        achievementStats: savedEntry.achievementStats,
+        progress: savedEntry.progress,
+        sabaqEntries: savedEntry.sabaqEntries || data.sabaqEntries,
+        latestCoverage: savedEntry.latestCoverage || data.latestCoverage,
+        recentEntries: nextRecentEntries,
+      };
+      const unlockedBeforeSave = new Set(
+        getAchievementBadges(data)
+          .filter((badge) => badge.achieved)
+          .map((badge) => badge.title)
+      );
+      const newlyUnlockedBadge = getAchievementBadges(nextDashboardData).find(
+        (badge) => badge.achieved && !unlockedBeforeSave.has(badge.title)
+      );
+      const streakJustStarted = (data.streak || 0) === 0 && (nextDashboardData.streak || 0) >= 3;
 
-      setData((currentData) => {
-        const currentRecentEntries = Array.isArray(currentData.recentEntries)
-          ? currentData.recentEntries
-          : [];
-        const nextRecentEntries = [
-          savedEntry.entry,
-          ...returnedRecentEntries,
-          ...currentRecentEntries,
-        ]
-          .filter(
-            (entry, index, entries) =>
-              entry?.id && entries.findIndex((candidate) => candidate.id === entry.id) === index
-          )
-          .slice(0, 7);
+      setData(nextDashboardData);
 
-        return {
-          ...currentData,
-          streak: savedEntry.streak,
-          longestStreak: savedEntry.longestStreak,
-          longestStreakRange: savedEntry.longestStreakRange,
-          weeklyActivity: savedEntry.weeklyActivity,
-          achievementStats: savedEntry.achievementStats,
-          progress: savedEntry.progress,
-          sabaqEntries: savedEntry.sabaqEntries || currentData.sabaqEntries,
-          latestCoverage: savedEntry.latestCoverage || currentData.latestCoverage,
-          recentEntries: nextRecentEntries,
-        };
-      });
+      if (newlyUnlockedBadge) {
+        showBadgeNotice(newlyUnlockedBadge.title);
+      }
+
+      if (streakJustStarted) {
+        showStreakNotice(nextDashboardData.streak);
+      }
       setCoverage((currentCoverage) => {
-        const nextSabaqCoverageMap = buildSabaqCoverageMap(savedEntry.sabaqEntries);
+        const nextSabaqCoverageMap = buildSabaqCoverageMap(
+          nextDashboardData.sabaqEntries,
+          nextDashboardData.progress?.memorizedJuz
+        );
         const nextCoverage = createIdealCoverageFromLatest(
-          savedEntry.latestCoverage,
+          nextDashboardData.latestCoverage,
           lessonPreferences,
           nextSabaqCoverageMap
         );
@@ -384,6 +538,8 @@ export default function Dashboard() {
 
       const dashboardData = await getDashboardData();
       applyDashboardData(dashboardData);
+      setBadgeNotice("");
+      setStreakNotice("");
       showDeleteNotice();
     } catch (error) {
       alert(error.response?.data?.message || "Undo failed. Please try again.");
@@ -411,7 +567,10 @@ export default function Dashboard() {
         ...defaultLessonPreferences,
         ...(response.lessonPreferences || lessonPreferenceDraft),
       };
-      const nextSabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries);
+      const nextSabaqCoverageMap = buildSabaqCoverageMap(
+        data.sabaqEntries,
+        data.progress?.memorizedJuz
+      );
       const nextCoverage = createIdealCoverageFromLatest(
         data.latestCoverage,
         nextPreferences,
@@ -460,7 +619,7 @@ export default function Dashboard() {
   const progress = data.progress || {};
   const savedEntries = Array.isArray(data.recentEntries) ? data.recentEntries : [];
   const recentEntries = savedEntries.filter(isVisibleRecentEntry).slice(0, 7);
-  const sabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries);
+  const sabaqCoverageMap = buildSabaqCoverageMap(data.sabaqEntries, progress.memorizedJuz);
   const currentSurah = progress.currentSurah
     ? surahs.find((surah) => surah.number === Number(progress.currentSurah))
     : null;
@@ -492,8 +651,10 @@ export default function Dashboard() {
     { count: 1, label: "1/3" },
     { count: 0, label: "0/3" },
   ];
+  const achievementBadges = getAchievementBadges(data);
+  /*
   const achievementStats = data.achievementStats || {};
-  const achievementBadges = [
+  const unusedAchievementBadges = [
     {
       title: "First Entry",
       mark: "1",
@@ -558,6 +719,7 @@ export default function Dashboard() {
       achievedDescription: "You saved 100 Revision sessions.",
     },
   ];
+  */
   const canSaveEntry = activeCoverageKeys.length > 0 || notes.trim().length > 0;
 
   return (
@@ -939,7 +1101,7 @@ export default function Dashboard() {
             <h2 style={styles.panelTitle}>Recent Entries</h2>
 
             {recentEntries.length === 0 ? (
-              <p style={styles.emptyText}>No recent entries yet.</p>
+              <p className="recent-empty-text" style={styles.emptyText}>No recent entries yet.</p>
             ) : (
               recentEntries.map((entry) => (
                 <div key={entry.id} className="recent-entry-card" style={styles.entry}>
@@ -992,6 +1154,18 @@ export default function Dashboard() {
       {deleteNotice ? (
         <div className="dashboard-toast delete-notice-toast" style={styles.deleteNoticeToast}>
           {deleteNotice}
+        </div>
+      ) : null}
+
+      {badgeNotice ? (
+        <div className="dashboard-toast badge-notice-toast" style={styles.badgeNoticeToast}>
+          {badgeNotice}
+        </div>
+      ) : null}
+
+      {streakNotice ? (
+        <div className="dashboard-toast streak-notice-toast" style={styles.streakNoticeToast}>
+          {streakNotice}
         </div>
       ) : null}
 
@@ -1148,6 +1322,9 @@ export default function Dashboard() {
                 >
                   <div className="dashboard-green-bg" style={styles.badgeMark}>{badge.mark}</div>
                   <h3 style={styles.badgeName}>{badge.title}</h3>
+                  {badge.achieved && badge.awardedDate ? (
+                    <p style={styles.badgeAwardDate}>{formatEntryDate(badge.awardedDate)}</p>
+                  ) : null}
                   <p className="achievement-badge-description" style={styles.badgeDescription}>
                     {badge.achieved ? badge.achievedDescription : badge.description}
                   </p>
@@ -1707,6 +1884,40 @@ const styles = {
     transform: "translateX(-50%)",
     animation: "notice-dissolve-life 2600ms ease-in-out forwards",
   },
+  badgeNoticeToast: {
+    position: "fixed",
+    left: "50%",
+    bottom: 138,
+    zIndex: 20,
+    minHeight: 42,
+    color: "#1f7a55",
+    background: "rgba(251, 253, 251, 0.96)",
+    border: "1px solid #d8e3dc",
+    borderRadius: 8,
+    padding: "11px 17px",
+    fontSize: 14,
+    fontWeight: 800,
+    boxShadow: "0 18px 36px rgba(23, 32, 27, 0.14)",
+    transform: "translateX(-50%)",
+    animation: "notice-dissolve-life 7000ms ease-in-out forwards",
+  },
+  streakNoticeToast: {
+    position: "fixed",
+    left: "50%",
+    bottom: 86,
+    zIndex: 20,
+    minHeight: 42,
+    color: "#1f7a55",
+    background: "rgba(251, 253, 251, 0.96)",
+    border: "1px solid #d8e3dc",
+    borderRadius: 8,
+    padding: "11px 17px",
+    fontSize: 14,
+    fontWeight: 800,
+    boxShadow: "0 18px 36px rgba(23, 32, 27, 0.14)",
+    transform: "translateX(-50%)",
+    animation: "notice-dissolve-life 7000ms ease-in-out forwards",
+  },
   badgeOverlay: {
     position: "fixed",
     inset: 0,
@@ -1863,6 +2074,14 @@ const styles = {
     fontSize: 15,
     fontWeight: 850,
     lineHeight: 1.2,
+  },
+  badgeAwardDate: {
+    color: "#6d7c75",
+    fontSize: 11,
+    fontWeight: 800,
+    lineHeight: 1.2,
+    fontStyle: "italic",
+    marginTop: -2,
   },
   badgeDescription: {
     position: "absolute",

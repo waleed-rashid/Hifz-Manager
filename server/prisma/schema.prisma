@@ -9,6 +9,7 @@ datasource db {
 
 model User {
   id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now())
   name          String
   email         String   @unique
   passwordHash  String
@@ -18,6 +19,7 @@ model User {
 
   memorizedJuzCount Int    @default(0)
   memorizedJuzList  String @default("[]")
+  onboardingMemorizedJuzList String @default("[]")
   currentJuz        Int?
   currentSurah      Int?
   currentAyah       Int?
@@ -44,5 +46,5 @@ model DailyEntry {
   manzilSaved    Boolean @default(false)
   notes     String?
 
-  user      User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

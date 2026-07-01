@@ -14,7 +14,8 @@ export type WeeklyActivityEntry = {
 
 export const calculateWeeklyActivity = (
   entries: WeeklyActivityEntry[],
-  todayValue = new Date()
+  todayValue = new Date(),
+  startDateValue?: Date | null
 ) => {
   const activityByDay = new Map<
     string,
@@ -37,6 +38,8 @@ export const calculateWeeklyActivity = (
 
   const today = new Date(todayValue);
   today.setHours(0, 0, 0, 0);
+  const startDate = startDateValue ? new Date(startDateValue) : null;
+  startDate?.setHours(0, 0, 0, 0);
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
@@ -52,5 +55,5 @@ export const calculateWeeklyActivity = (
       date: dayKey,
       completedCount,
     };
-  });
+  }).filter((day) => !startDate || new Date(day.date).getTime() >= startDate.getTime());
 };

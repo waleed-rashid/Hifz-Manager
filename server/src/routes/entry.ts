@@ -12,6 +12,7 @@ import {
 } from "../quranProgress";
 import { calculateStreakStats } from "../streaks";
 import { calculateWeeklyActivity } from "../weeklyActivity";
+import { calculateAchievementStats } from "../achievements";
 
 const router = express.Router();
 
@@ -106,7 +107,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     },
   });
   const streakStats = calculateStreakStats(entries, today);
-  const weeklyActivity = calculateWeeklyActivity(entries, today);
+  const weeklyActivity = calculateWeeklyActivity(entries, today, user.createdAt);
   const sabaqRange =
     normalizeCoverageRange(coverage?.sabaq) ||
     (sabaq !== undefined ? parseCoverageRange(entry.sabaq) : null);
@@ -118,7 +119,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
   const currentJuzProgressPercent = getJuzProgressPercent(currentSurah, currentAyah);
   const memorizedJuz = calculateCompletedJuz(
     entries,
-    parseMemorizedJuzList(user.memorizedJuzList),
+    parseMemorizedJuzList(user.onboardingMemorizedJuzList),
     sabaqRange
   );
   const memorizedSurahs = calculateCompletedSurahs(entries, sabaqRange);
@@ -138,11 +139,7 @@ router.post("/", authMiddleware, async (req: AuthRequest, res) => {
     }),
     { sabaq: "", sabaqPara: "", manzil: "" }
   );
-  const achievementStats = {
-    totalEntries: entries.length,
-    revisionSessions: entries.filter((savedEntry) => savedEntry.manzilSaved && savedEntry.manzil.trim())
-      .length,
-  };
+  const achievementStats = calculateAchievementStats(entries, user.onboardingMemorizedJuzList);
 
   await prisma.user.update({
     where: { id: user.id },

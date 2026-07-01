@@ -9,6 +9,7 @@ const auth_1 = require("../middleware/auth");
 const quranProgress_1 = require("../quranProgress");
 const streaks_1 = require("../streaks");
 const weeklyActivity_1 = require("../weeklyActivity");
+const achievements_1 = require("../achievements");
 const router = express_1.default.Router();
 // GET DASHBOARD DATA
 router.get("/", auth_1.authMiddleware, async (req, res) => {
@@ -19,6 +20,7 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
         where: { id: req.userId },
         select: {
             id: true,
+            createdAt: true,
             name: true,
             email: true,
             streak: true,
@@ -26,6 +28,7 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
             lastEntryDate: true,
             memorizedJuzCount: true,
             memorizedJuzList: true,
+            onboardingMemorizedJuzList: true,
             currentJuz: true,
             currentSurah: true,
             currentAyah: true,
@@ -58,8 +61,8 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
         },
     });
     const streakStats = (0, streaks_1.calculateStreakStats)(allEntries, today);
-    const weeklyActivity = (0, weeklyActivity_1.calculateWeeklyActivity)(allEntries, today);
-    const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(allEntries, (0, quranProgress_1.parseMemorizedJuzList)(user.memorizedJuzList));
+    const weeklyActivity = (0, weeklyActivity_1.calculateWeeklyActivity)(allEntries, today, user.createdAt);
+    const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(allEntries, (0, quranProgress_1.parseMemorizedJuzList)(user.onboardingMemorizedJuzList));
     const memorizedSurahs = (0, quranProgress_1.calculateCompletedSurahs)(allEntries);
     const latestSabaqRange = (0, quranProgress_1.getLatestSabaqRange)(allEntries);
     const currentJuz = latestSabaqRange && (0, quranProgress_1.getJuzForAyahReference)(latestSabaqRange.endSurahNumber, latestSabaqRange.endAyah);
@@ -102,15 +105,12 @@ router.get("/", auth_1.authMiddleware, async (req, res) => {
             (entry.sabaqParaSaved && entry.sabaqPara.trim() ? entry.sabaqPara : ""),
         manzil: coverage.manzil || (entry.manzilSaved && entry.manzil.trim() ? entry.manzil : ""),
     }), { sabaq: "", sabaqPara: "", manzil: "" });
-    const achievementStats = {
-        totalEntries: allEntries.length,
-        revisionSessions: allEntries.filter((entry) => entry.manzilSaved && entry.manzil.trim())
-            .length,
-    };
+    const achievementStats = (0, achievements_1.calculateAchievementStats)(allEntries, user.onboardingMemorizedJuzList);
     res.json({
         studentName: user.name,
         user: {
             id: user.id,
+            createdAt: user.createdAt,
             name: user.name,
             email: user.email,
             lessonPreferences: {

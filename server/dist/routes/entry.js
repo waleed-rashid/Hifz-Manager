@@ -9,6 +9,7 @@ const auth_1 = require("../middleware/auth");
 const quranProgress_1 = require("../quranProgress");
 const streaks_1 = require("../streaks");
 const weeklyActivity_1 = require("../weeklyActivity");
+const achievements_1 = require("../achievements");
 const router = express_1.default.Router();
 // CREATE DAILY ENTRY
 router.post("/", auth_1.authMiddleware, async (req, res) => {
@@ -91,7 +92,7 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
         },
     });
     const streakStats = (0, streaks_1.calculateStreakStats)(entries, today);
-    const weeklyActivity = (0, weeklyActivity_1.calculateWeeklyActivity)(entries, today);
+    const weeklyActivity = (0, weeklyActivity_1.calculateWeeklyActivity)(entries, today, user.createdAt);
     const sabaqRange = (0, quranProgress_1.normalizeCoverageRange)(coverage?.sabaq) ||
         (sabaq !== undefined ? (0, quranProgress_1.parseCoverageRange)(entry.sabaq) : null);
     const currentJuz = sabaqRange && (0, quranProgress_1.getJuzForAyahReference)(sabaqRange.endSurahNumber, sabaqRange.endAyah);
@@ -99,7 +100,7 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
     const currentSurah = sabaqRange?.endSurahNumber ?? user.currentSurah;
     const currentAyah = sabaqRange?.endAyah ?? user.currentAyah;
     const currentJuzProgressPercent = (0, quranProgress_1.getJuzProgressPercent)(currentSurah, currentAyah);
-    const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(entries, (0, quranProgress_1.parseMemorizedJuzList)(user.memorizedJuzList), sabaqRange);
+    const memorizedJuz = (0, quranProgress_1.calculateCompletedJuz)(entries, (0, quranProgress_1.parseMemorizedJuzList)(user.onboardingMemorizedJuzList), sabaqRange);
     const memorizedSurahs = (0, quranProgress_1.calculateCompletedSurahs)(entries, sabaqRange);
     const latestCoverage = entries.reduce((coverage, savedEntry) => ({
         sabaq: coverage.sabaq ||
@@ -111,11 +112,7 @@ router.post("/", auth_1.authMiddleware, async (req, res) => {
         manzil: coverage.manzil ||
             (savedEntry.manzilSaved && savedEntry.manzil.trim() ? savedEntry.manzil : ""),
     }), { sabaq: "", sabaqPara: "", manzil: "" });
-    const achievementStats = {
-        totalEntries: entries.length,
-        revisionSessions: entries.filter((savedEntry) => savedEntry.manzilSaved && savedEntry.manzil.trim())
-            .length,
-    };
+    const achievementStats = (0, achievements_1.calculateAchievementStats)(entries, user.onboardingMemorizedJuzList);
     await prisma_1.prisma.user.update({
         where: { id: user.id },
         data: {

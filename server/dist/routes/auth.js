@@ -38,6 +38,7 @@ router.post("/signup", async (req, res) => {
             passwordHash,
             memorizedJuzCount,
             memorizedJuzList: JSON.stringify(memorizedJuzList),
+            onboardingMemorizedJuzList: JSON.stringify(memorizedJuzList),
             currentJuz,
             currentSurah,
             currentAyah,
@@ -63,16 +64,17 @@ router.post("/signup", async (req, res) => {
 });
 // LOGIN
 router.post("/login", async (req, res) => {
-    const { email, password } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const { password } = req.body;
     const user = await prisma_1.prisma.user.findUnique({
         where: { email },
     });
     if (!user) {
-        return res.status(400).json({ message: "Invalid credentials" });
+        return res.status(400).json({ message: "No account exists with that email." });
     }
     const isValid = await bcrypt_1.default.compare(password, user.passwordHash);
     if (!isValid) {
-        return res.status(400).json({ message: "Invalid credentials" });
+        return res.status(400).json({ message: "Incorrect password." });
     }
     const token = jsonwebtoken_1.default.sign({ userId: user.id }, process.env.JWT_SECRET || "secret", { expiresIn: "7d" });
     res.json({

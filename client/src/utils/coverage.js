@@ -321,11 +321,21 @@ export const createIdealCoverageFromLatest = (
   };
 };
 
-export const buildSabaqCoverageMap = (sabaqEntries = []) => {
+export const buildSabaqCoverageMap = (sabaqEntries = [], memorizedJuz = []) => {
   const coverageMap = surahs.reduce((map, surah) => {
     map[surah.number] = new Set();
     return map;
   }, {});
+  const memorizedJuzSet = new Set((memorizedJuz || []).map(Number));
+
+  juzIntervals
+    .filter((interval) => memorizedJuzSet.has(interval.juz))
+    .forEach((interval) => {
+      for (let globalAyah = interval.start; globalAyah <= interval.end; globalAyah += 1) {
+        const reference = getReferenceFromGlobalAyahNumber(globalAyah);
+        coverageMap[reference.surahNumber].add(reference.ayah);
+      }
+    });
 
   sabaqEntries.forEach((entry) => {
     const parsedCoverage = parseCoverageRange(entry.sabaq);

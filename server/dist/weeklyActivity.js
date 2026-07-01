@@ -6,7 +6,7 @@ const toDayKey = (dateValue) => {
     date.setHours(0, 0, 0, 0);
     return date.toISOString();
 };
-const calculateWeeklyActivity = (entries, todayValue = new Date()) => {
+const calculateWeeklyActivity = (entries, todayValue = new Date(), startDateValue) => {
     const activityByDay = new Map();
     entries.forEach((entry) => {
         const dayKey = toDayKey(entry.date);
@@ -22,6 +22,8 @@ const calculateWeeklyActivity = (entries, todayValue = new Date()) => {
     });
     const today = new Date(todayValue);
     today.setHours(0, 0, 0, 0);
+    const startDate = startDateValue ? new Date(startDateValue) : null;
+    startDate?.setHours(0, 0, 0, 0);
     return Array.from({ length: 7 }, (_, index) => {
         const date = new Date(today);
         date.setDate(today.getDate() - (6 - index));
@@ -34,6 +36,6 @@ const calculateWeeklyActivity = (entries, todayValue = new Date()) => {
             date: dayKey,
             completedCount,
         };
-    });
+    }).filter((day) => !startDate || new Date(day.date).getTime() >= startDate.getTime());
 };
 exports.calculateWeeklyActivity = calculateWeeklyActivity;
